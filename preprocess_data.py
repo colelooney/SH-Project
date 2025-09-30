@@ -19,6 +19,9 @@ with h5py.File(relative_path) as f:
 X = df.drop(columns=['Lumi_weight'])
 y = df['Lumi_weight']
 
+y[y>0] = 1
+y[y<0] = 0
+
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=1234)
 
 X_train = StandardScaler().fit_transform(X_train)
