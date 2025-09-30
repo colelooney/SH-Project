@@ -31,4 +31,4 @@ X_train_tensor = torch.tensor(X_train.values, dtype=torch.float32)
 X_test_tensor = torch.tensor(X_test.values, dtype=torch.float32)
 y_train_tensor = torch.tensor(y_train.values, dtype=torch.long)
 y_test_tensor = torch.tensor(y_test.values, dtype=torch.long)
-weights = torch.tensor([1.0,1.0])
+weights = torch.tensor([1.0,1.0]) #for output classes 0 and 1, approximately same number of events
