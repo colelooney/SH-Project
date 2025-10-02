@@ -9,6 +9,8 @@ import h5py
 import numpy as np
 import pandas as pd
 import torch
+import torch.optim as optim
+import torch.nn as nn
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
@@ -24,7 +26,7 @@ y[y<0] = 0
 
 y = np.array(y)
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=1234)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=42)
 
 scaler = StandardScaler()
 X_train = scaler.fit_transform(X_train)

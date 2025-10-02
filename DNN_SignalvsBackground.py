@@ -3,48 +3,48 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
+from sklearn.metrics import classification_report, confusion_matrix
 
 input_dim = X_train_tensor.shape[1]
 hidden_dim = 64
-output_dim = 2
+output_dim = 1 #Binary Classifcation
 
-print("\nStep 2: Defining the DNN model...")
+print("\nDefining the DNN model...")
 class DNN(nn.Module):
     def __init__(self, input_size):
         super(DNN, self).__init__()
         self.layers = nn.Sequential(
-            nn.Linear(input_size, 128),
+            nn.Linear(input_size, hidden_dim),
             nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(128, 64),
+            nn.Linear(hidden_dim,hidden_dim),
             nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(64, 32),
-            nn.ReLU(),
-            nn.Linear(32, 2)
+            nn.Linear(hidden_dim,output_dim),
+            nn.Sigmoid()
         )
 
     def forward(self, x):
         return self.layers(x)
     
 input_size = X_train_tensor.shape[1]
-learning_rate = 0.001
+learning_rate = 0.01
 batch_size = 256
 num_epochs = 20
 
 model = DNN(input_size)
-criterion = nn.CrossEntropyLoss(weight = weights)
+criterion = nn.BCELoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
+train_dataset = TensorDataset(X_train_tensor, y_train_tensor.float())
 train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
+
+print(model)
 
 print(f"\nStarting training for {num_epochs} epochs...")
 for epoch in range(num_epochs):
     model.train()
     for i, (features, labels) in enumerate(train_loader):
         outputs = model(features)
-        loss = criterion(outputs, labels)
+        loss = criterion(outputs, labels.unsqueeze(1))
 
         optimizer.zero_grad()
         loss.backward()
@@ -55,28 +55,28 @@ for epoch in range(num_epochs):
 print("\nEvaluating the model on test data")
 model.eval()
 with torch.no_grad():
-    raw_predictions = model(X_test_tensor)
+    probabilities_p_plus = model(X_test_tensor)
 
-    probabilities = torch.nn.functional.softmax(raw_predictions, dim=1)
-    p_minus = probabilities[:, 0]
-    p_plus = probabilities[:, 1]
+    p_plus = probabilities_p_plus.squeeze() #make 1d
+    p_minus = 1 - p_plus
     discriminant_scores = p_plus - p_minus
-    _, predicted_labels = torch.max(raw_predictions, 1)
-    correct = (predicted_labels == y_test_tensor).sum().item()
-    total = y_test_tensor.size(0)
-    accuracy = 100 * correct / total
-    print(f'\nAccuracy on the test set: {accuracy:.2f} %')
+    predicted_labels = (probabilities_p_plus > 0.5).long().squeeze()
+
+    y_true = y_test_tensor.numpy()
+    y_pred = predicted_labels.numpy()
+
+    print("\nClassification Report:")
+    print(classification_report(y_true, y_pred, target_names=['Background (Class 0)', 'Signal (Class 1)']))
 
 
 print("\n--- Final Output Inspection ---")
-print("Shape of raw_predictions tensor:", raw_predictions.shape)
-print("Shape of probabilities tensor:", probabilities.shape)
+print("Shape of probabilities_x p_plus tensor:", probabilities_p_plus.shape)
 print("Shape of discriminant_scores tensor:", discriminant_scores.shape)
 
 print("\nExample outputs for the first 5 test events:")
 for i in range(5):
     print(f"Event {i}:")
-    print(f"  Raw Logits   : [Class 0: {raw_predictions[i, 0]:.4f}, Class 1: {raw_predictions[i, 1]:.4f}]")
-    print(f"  Probabilities: [p(-): {p_minus[i]:.4f}, p(+): {p_plus[i]:.4f}]")
+    print(f" Model Output   : [p(+): {p_plus[i]:.4f}")
     print(f"  Discriminant (p(+) - p(-)): {discriminant_scores[i]:.4f}")
+    print(f"  Predicted Label: {predicted_labels[i].item()}, True Label: {y_test_tensor[i].item()}")
     print("-" * 20)
