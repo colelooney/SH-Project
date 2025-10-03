@@ -52,6 +52,9 @@ for epoch in range(num_epochs):
 
     print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
 
+#Save the model
+torch.save(model.state_dict(), 'dnn_model.pth')
+
 print("\nEvaluating the model on test data")
 model.eval()
 with torch.no_grad():
