@@ -13,8 +13,6 @@ model.load_state_dict(torch.load(path))
 
 mi = mutual_info_classif(X_train_tensor.numpy(), y_train_tensor.numpy(), discrete_features = 'auto')
 
-scaler = StandardScaler()
-mi_normalized = scaler.fit_transform(mi.reshape(-1,1)).flatten()
 
 relative_path = './data/new_Input_CP_Studies_llqq_LinearTerm_29_September2025.h5'
 with h5py.File(relative_path) as f:
@@ -23,7 +21,7 @@ with h5py.File(relative_path) as f:
 feature_names = df.drop(columns=['Lumi_weight']).columns.tolist()
 
 
-feature_importances = pd.DataFrame({'Feature': feature_names, 'Importance': mi_normalized.flatten()})
+feature_importances = pd.DataFrame({'Feature': feature_names, 'Importance': mi.flatten()})
 
 feature_importances = feature_importances.sort_values(by='Importance', ascending=False)
 print(feature_importances)
