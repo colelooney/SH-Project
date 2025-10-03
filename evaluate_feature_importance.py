@@ -2,6 +2,7 @@ from preprocess_data import X_train_tensor, X_test_tensor, y_train_tensor, y_tes
 import torch
 from sklearn.feature_selection import mutual_info_classif
 from sklearn.preprocessing import StandardScaler
+from sklearn.inspection import permutation_importance
 import h5py
 import pandas as pd
 from DNN_SignalvsBackground import DNN
@@ -11,7 +12,11 @@ path = f'ModelsDNN/dnn_model.pth'
 model = DNN(input_size = X_train_tensor.shape[1])
 model.load_state_dict(torch.load(path))
 
-mi = mutual_info_classif(X_train_tensor.numpy(), y_train_tensor.numpy(), discrete_features = 'auto')
+X_test = X_test_tensor.numpy()
+y_test = y_test_tensor.numpy()
+
+#Feature importance using mutual information
+mi = mutual_info_classif(X_test, y_test, discrete_features = 'auto')
 
 
 relative_path = './data/new_Input_CP_Studies_llqq_LinearTerm_29_September2025.h5'
