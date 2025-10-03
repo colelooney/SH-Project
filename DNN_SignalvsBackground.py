@@ -24,62 +24,66 @@ class DNN(nn.Module):
 
     def forward(self, x):
         return self.layers(x)
-    
-input_size = X_train_tensor.shape[1]
-learning_rate = 0.01
-batch_size = 256
-num_epochs = 20
 
-model = DNN(input_size)
-criterion = nn.BCELoss()
-optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+def main():
+    input_size = X_train_tensor.shape[1]
+    learning_rate = 0.01
+    batch_size = 256
+    num_epochs = 20
 
-train_dataset = TensorDataset(X_train_tensor, y_train_tensor.float())
-train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
+    model = DNN(input_size)
+    criterion = nn.BCELoss()
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-print(model)
+    train_dataset = TensorDataset(X_train_tensor, y_train_tensor.float())
+    train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
 
-print(f"\nStarting training for {num_epochs} epochs...")
-for epoch in range(num_epochs):
-    model.train()
-    for i, (features, labels) in enumerate(train_loader):
-        outputs = model(features)
-        loss = criterion(outputs, labels.unsqueeze(1))
+    print(model)
 
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+    print(f"\nStarting training for {num_epochs} epochs...")
+    for epoch in range(num_epochs):
+        model.train()
+        for i, (features, labels) in enumerate(train_loader):
+            outputs = model(features)
+            loss = criterion(outputs, labels.unsqueeze(1))
 
-    print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
-#Save the model
-torch.save(model.state_dict(), 'ModelsDNN/dnn_model.pth')
+        print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
 
-print("\nEvaluating the model on test data")
-model.eval()
-with torch.no_grad():
-    probabilities_p_plus = model(X_test_tensor)
+    #Save the model
+    torch.save(model.state_dict(), 'ModelsDNN/dnn_model.pth')
 
-    p_plus = probabilities_p_plus.squeeze() #make 1d
-    p_minus = 1 - p_plus
-    discriminant_scores = p_plus - p_minus
-    predicted_labels = (probabilities_p_plus > 0.5).long().squeeze()
+    print("\nEvaluating the model on test data")
+    model.eval()
+    with torch.no_grad():
+        probabilities_p_plus = model(X_test_tensor)
 
-    y_true = y_test_tensor.numpy()
-    y_pred = predicted_labels.numpy()
+        p_plus = probabilities_p_plus.squeeze() #make 1d
+        p_minus = 1 - p_plus
+        discriminant_scores = p_plus - p_minus
+        predicted_labels = (probabilities_p_plus > 0.5).long().squeeze()
 
-    print("\nClassification Report:")
-    print(classification_report(y_true, y_pred, target_names=['Background (Class 0)', 'Signal (Class 1)']))
+        y_true = y_test_tensor.numpy()
+        y_pred = predicted_labels.numpy()
+
+        print("\nClassification Report:")
+        print(classification_report(y_true, y_pred, target_names=['Background (Class 0)', 'Signal (Class 1)']))
 
 
-print("\n--- Final Output Inspection ---")
-print("Shape of probabilities_x p_plus tensor:", probabilities_p_plus.shape)
-print("Shape of discriminant_scores tensor:", discriminant_scores.shape)
+    print("\n--- Final Output Inspection ---")
+    print("Shape of probabilities_x p_plus tensor:", probabilities_p_plus.shape)
+    print("Shape of discriminant_scores tensor:", discriminant_scores.shape)
 
-print("\nExample outputs for the first 5 test events:")
-for i in range(5):
-    print(f"Event {i}:")
-    print(f" Model Output   : [p(+): {p_plus[i]:.4f}")
-    print(f"  Discriminant (p(+) - p(-)): {discriminant_scores[i]:.4f}")
-    print(f"  Predicted Label: {predicted_labels[i].item()}, True Label: {y_test_tensor[i].item()}")
-    print("-" * 20)
+    print("\nExample outputs for the first 5 test events:")
+    for i in range(5):
+        print(f"Event {i}:")
+        print(f" Model Output   : [p(+): {p_plus[i]:.4f}")
+        print(f"  Discriminant (p(+) - p(-)): {discriminant_scores[i]:.4f}")
+        print(f"  Predicted Label: {predicted_labels[i].item()}, True Label: {y_test_tensor[i].item()}")
+        print("-" * 20)
+
+if __name__ == "__main__":
+    main()
