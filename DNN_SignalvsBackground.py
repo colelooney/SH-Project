@@ -91,7 +91,7 @@ def main():
     np.savez(
         './data/dnn_discriminant_scores_and_lumi_weights.npz',
         discriminant_scores = discriminant_scores.numpy(),
-        Lumi_weights = lumi_test.numpy()
+        Lumi_weights = lumi_test.to_numpy()
     )
 if __name__ == "__main__":
     main()
