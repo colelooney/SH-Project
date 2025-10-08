@@ -1,9 +1,10 @@
-from preprocess_data import X_train_tensor, X_test_tensor, y_train_tensor, y_test_tensor, weights
+from preprocess_data import X_train_tensor, X_test_tensor, y_train_tensor, y_test_tensor, weights, lumi_test
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
 from sklearn.metrics import classification_report, confusion_matrix
+import numpy as np
 
 input_dim = X_train_tensor.shape[1]
 hidden_dim = 64
@@ -85,5 +86,12 @@ def main():
         print(f"  Predicted Label: {predicted_labels[i].item()}, True Label: {y_test_tensor[i].item()}")
         print("-" * 20)
 
+
+    #save discriminant scores and lumi weights for plotting
+    np.savez(
+        './data/dnn_discriminant_scores_and_lumi_weights.npz',
+        discriminant_scores = discriminant_scores.numpy(),
+        Lumi_weights = lumi_test.numpy()
+    )
 if __name__ == "__main__":
     main()
