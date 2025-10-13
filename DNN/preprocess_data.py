@@ -15,7 +15,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 # relative_path = './data/new_Input_CP_Studies_llqq_LinearTerm_29_September2025.h5' #Path to first data file
-relative_path = './data/new_Input_CP_Studies_llqq_LinearTerm_13th_October2025.h5'
+relative_path = '../data/new_Input_CP_Studies_llqq_LinearTerm_13th_October2025.h5'
 with h5py.File(relative_path) as f:
     df = pd.DataFrame(f['LargeRJet']['1d'][:])
 
