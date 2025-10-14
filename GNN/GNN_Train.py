@@ -32,7 +32,7 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), lr = learning_rate, weight_decay = 5e-4)
     criterion = torch.nn.BCELoss()
 
-    num_epochs = 20
+    num_epochs = 10
 
     for epoch in range(num_epochs):
         model.train()
@@ -48,6 +48,8 @@ def main():
 
         avg_loss = total_loss / len(train_dataset)
         print(f"Epoch {epoch+1}/{num_epochs}, Average Training Loss: {avg_loss:.4f}")
+    
+    torch.save(model.state_dict(), 'ModelsGNN/gnn_model.pth')
 
     
 if __name__ == "__main__":
