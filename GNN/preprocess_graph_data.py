@@ -40,38 +40,37 @@ class CPDataSet(Dataset):
 
             raw_constituents = f['LargeRJet']['2d'][:] #unstructued array of constituents
 
-        pass
-        # torch.save(event_data_local, self.processed_paths[1]) #save event data info for later use in label
+        torch.save(event_data_local, self.processed_paths[1]) #save event data info for later use in label
 
-        # constant_features = np.zeros(raw_constituents.shape + (len(raw_constituents.dtype.names),), dtype=np.float32)
-        # feature_names = raw_constituents.dtype.names
+        constant_features = np.zeros(raw_constituents.shape + (len(raw_constituents.dtype.names),), dtype=np.float32)
+        feature_names = raw_constituents.dtype.names
 
-        # for i,name in enumerate(feature_names):
-        #     constant_features[...,i] = raw_constituents[name]
+        for i,name in enumerate(feature_names):
+            constant_features[...,i] = raw_constituents[name]
 
-        # valid_mask = constant_features[:,:,-1] > 0 #mask for valid constituents based on pT > 0
-        # constant_features = np.nan_to_num(constant_features, nan=0.0) #fill NaNs with 0
+        valid_mask = constant_features[:,:,-1] > 0 #mask for valid constituents based on pT > 0
+        constant_features = np.nan_to_num(constant_features, nan=0.0) #fill NaNs with 0
 
-        # num_events = constant_features.shape[0] #number fo events
-        # for i in range(num_events):
-        #     mask = valid_mask[i] #mask for valid constituents in event i
-        #     valid_nodes = constant_features[i,mask,:] #get valid constituents for event i
+        num_events = constant_features.shape[0] #number fo events
+        for i in range(num_events):
+            mask = valid_mask[i] #mask for valid constituents in event i
+            valid_nodes = constant_features[i,mask,:] #get valid constituents for event i
 
-        #     if valid_nodes.shape[0] < 2:
-        #         continue
+            if valid_nodes.shape[0] < 2:
+                continue
             
 
-        #     node_feats = self.__get_node_features(valid_nodes) #get node features tensor
-        #     edge_index = self.__get_edge_index(valid_nodes,feature_names) #get edge index tensor
+            node_feats = self.__get_node_features(valid_nodes) #get node features tensor
+            edge_index = self.__get_edge_index(valid_nodes,feature_names) #get edge index tensor
 
-        #     label = self._get_labels(i, event_data_local) #get label tensor
+            label = self._get_labels(i, event_data_local) #get label tensor
 
-        #     data = Data(x = node_feats, edge_index = edge_index, y = label) #create PyG Data object
+            data = Data(x = node_feats, edge_index = edge_index, y = label) #create PyG Data object
 
-        #     torch.save(data, osp.join(self.processed_dir, f'data_{i}.pt')) #save graph data object
+            torch.save(data, osp.join(self.processed_dir, f'data_{i}.pt')) #save graph data object
 
-        #     if (i + 1) % 5000 == 0:
-        #         print(f'Processed {i+1}/{num_events} events.')
+            if (i + 1) % 5000 == 0:
+                print(f'Processed {i+1}/{num_events} events.')
     
 
     def __get_node_features(self, valid_nodes):
@@ -125,12 +124,3 @@ if __name__ == '__main__':
     print(f"Example graph:\n{dataset[0]}")
     print(f"Node features shape: {dataset[0].x.shape}")
     print(f"Edge index shape: {dataset[0].edge_index.shape}")
-
-    # torch.manual_seed(12345)
-    # dataset = dataset.shuffle()
-    # a = int(len(dataset))
-    # b = int(0.8 * len(dataset))
-
-    # train_dataset = dataset[:b]
-    # test_dataset = dataset[b:a]
-
