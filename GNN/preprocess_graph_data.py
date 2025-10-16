@@ -56,6 +56,9 @@ class CPDataSet(Dataset):
             mask = valid_mask[i] #mask for valid constituents in event i
             valid_nodes = constant_features[i,mask,:] #get valid constituents for event i
 
+            lumi_weight_val = event_data_local['Lumi_weight'].iloc[i]
+            lumi_weight_tensor = torch.tensor([lumi_weight_val], dtype=torch.float)
+
             if valid_nodes.shape[0] < 2:
                 continue
             
@@ -65,7 +68,7 @@ class CPDataSet(Dataset):
 
             label = self._get_labels(i, event_data_local) #get label tensor
 
-            data = Data(x = node_feats, edge_index = edge_index, y = label) #create PyG Data object
+            data = Data(x = node_feats, edge_index = edge_index, y = label, lumi_weight = lumi_weight_tensor) #create PyG Data object
 
             torch.save(data, osp.join(self.processed_dir, f'data_{i}.pt')) #save graph data object
 
