@@ -17,17 +17,25 @@ def main():
 
     num_graphs = int(len(dataset))
     split_idx = int(0.8 * len(dataset))
+    dev_idx = int(0.8 * split_idx)
 
-    train_dataset = dataset[:split_idx]
+    train_dev_dataset = dataset[:split_idx]
     test_dataset = dataset[split_idx:]
 
+    train_dataset = train_dev_dataset[:dev_idx]
+    val_dataset = train_dev_dataset[dev_idx:]
+
+
+
     print(f"Training set size: {len(train_dataset)}")
+    print(f"Validation set size: {len(val_dataset)}")
     print(f"Testing set size: {len(test_dataset)}")
 
 
     batch_size = 64
     train_loader = DataLoader(train_dataset, batch_size = batch_size, shuffle = True)
     test_loader = DataLoader(test_dataset, batch_size = batch_size, shuffle = False)
+    dev_loader = DataLoader(val_dataset, batch_size = batch_size, shuffle = False)
 
     hidden_dim = 16
     learning_rate = 0.01
@@ -54,6 +62,50 @@ def main():
         print(f"Epoch {epoch+1}/{num_epochs}, Average Training Loss: {avg_loss:.4f}")
     
     torch.save(model.state_dict(), 'ModelsGNN/gnn_model.pth')
+
+    model.eval()
+    total_dev_loss = 0 
+    all_val_preds = []
+    all_val_labels = []
+    all_val_probs = []
+    all_val_discriminents = []
+    with torch.no_grad():
+        for batch in test_loader:
+            out = model(batch.x, batch.edge_index, batch.batch)
+
+            loss = criterion(out, batch.y.float().unsqueeze(1))
+            total_dev_loss += loss.item() * batch.num_graphs
+
+            preds = (out > 0.5).long().squeeze()
+
+            all_val_preds.append(preds.cpu())
+            all_val_labels.append(batch.y.cpu())
+            all_val_probs.append(out.cpu().squeeze())
+            discriminant_scores = out.squeeze() - (1 - out).squeeze()
+            all_val_discriminents.append(discriminant_scores.cpu())
+    
+    all_val_preds = torch.cat(all_val_preds)
+    all_val_labels = torch.cat(all_val_labels)
+    all_val_probs = torch.cat(all_val_probs)
+    all_val_discriminents = torch.cat(all_val_discriminents)
+
+
+    avg_test_loss = total_dev_loss / len(val_dataset)
+    accuracy = accuracy_score(all_val_labels, all_val_preds)
+    precision = precision_score(all_val_labels, all_val_preds)
+    recall = recall_score(all_val_labels, all_val_preds)
+    auc = roc_auc_score(all_val_labels, all_val_probs)
+
+    print(f"Average Val Loss: {avg_test_loss:.4f}")
+    print(f"VAL Accuracy: {accuracy:.4f}")
+    print(f"VAL Precision: {precision:.4f}")
+    print(f"VAL Recall: {recall:.4f}")
+    print(f"VAL ROC AUC: {auc:.4f}")
+
+    print("\n--- Final Output Inspection ---")
+    print("Shape of probabilities_x p_plus tensor:", all_val_probs.shape)
+    print("Shape of discriminant_scores tensor:", all_val_discriminents.shape)
+
 
     model.eval()
     total_test_loss = 0 
@@ -92,6 +144,7 @@ def main():
     print(f"Accuracy: {accuracy:.4f}")
     print(f"Precision: {precision:.4f}")
     print(f"Recall: {recall:.4f}")
+    print(f"ROC AUC: {auc:.4f}")
 
     print("\n--- Final Output Inspection ---")
     print("Shape of probabilities_x p_plus tensor:", all_probs.shape)
