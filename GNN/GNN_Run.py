@@ -16,20 +16,27 @@ def main():
     input_size = dataset.num_node_features
 
     num_graphs = int(len(dataset))
-    split_idx = int(0.8 * len(dataset))
-    dev_idx = int(0.8 * split_idx)
+    split_idx = int(0.5 * len(dataset))
 
-    train_dev_dataset = dataset[:split_idx]
-    test_dataset = dataset[split_idx:]
+    train_dataset = dataset[:split_idx]
+    test_val_dataset = dataset[split_idx:]
 
-    train_dataset = train_dev_dataset[:dev_idx]
-    val_dataset = train_dev_dataset[dev_idx:]
+    dev_idx = int(0.5 * len(test_val_dataset))
+    test_dataset = test_val_dataset[:dev_idx]
+    val_dataset = test_val_dataset[dev_idx:]
 
 
 
     print(f"Training set size: {len(train_dataset)}")
     print(f"Validation set size: {len(val_dataset)}")
     print(f"Testing set size: {len(test_dataset)}")
+
+    train_labels = torch.cat([data.y for data in train_dataset])
+    num_class_0 = (train_labels == 0).sum()
+    num_class_1 = (train_labels == 1).sum()
+
+    pos_weight_value = num_class_0 / num_class_1
+    pos_weight_tensor = torch.tensor([pos_weight_value], dtype=torch.float)
 
 
     batch_size = 64
@@ -42,9 +49,9 @@ def main():
 
     model = GCN(input_size, hidden_dim)
     optimizer = torch.optim.Adam(model.parameters(), lr = learning_rate, weight_decay = 5e-4)
-    criterion = torch.nn.BCELoss()
+    criterion = torch.nn.BCELoss(weight = pos_weight_tensor)
 
-    num_epochs = 1
+    num_epochs = 10
 
     for epoch in range(num_epochs):
         model.train()
@@ -70,7 +77,7 @@ def main():
     all_val_probs = []
     all_val_discriminents = []
     with torch.no_grad():
-        for batch in test_loader:
+        for batch in dev_loader:
             out = model(batch.x, batch.edge_index, batch.batch)
 
             loss = criterion(out, batch.y.float().unsqueeze(1))
@@ -106,6 +113,14 @@ def main():
     print("Shape of probabilities_x p_plus tensor:", all_val_probs.shape)
     print("Shape of discriminant_scores tensor:", all_val_discriminents.shape)
 
+    np.savez(
+        '../graphdata/gnn_discriminant_scores_validation.npz',
+        discriminant_scores = all_val_discriminents.numpy(),
+        y_true = all_val_labels.numpy(),
+        y_pred = all_val_preds.numpy(),
+        lumi_weights = all_lumi_weights.numpy()
+    )
+
 
     model.eval()
     total_test_loss = 0 
@@ -113,6 +128,7 @@ def main():
     all_labels = []
     all_probs = []
     all_discriminents = []
+    all_lumi_weights = []
     with torch.no_grad():
         for batch in test_loader:
             out = model(batch.x, batch.edge_index, batch.batch)
@@ -126,12 +142,14 @@ def main():
             all_labels.append(batch.y.cpu())
             all_probs.append(out.cpu().squeeze())
             discriminant_scores = out.squeeze() - (1 - out).squeeze()
+            all_lumi_weights.append(batch.lumi_weight.cpu())
             all_discriminents.append(discriminant_scores.cpu())
     
     all_preds = torch.cat(all_preds)
     all_labels = torch.cat(all_labels)
     all_probs = torch.cat(all_probs)
     all_discriminents = torch.cat(all_discriminents)
+    all_lumi_weights = torch.cat(all_lumi_weights)
 
 
     avg_test_loss = total_test_loss / len(test_dataset)
@@ -154,7 +172,8 @@ def main():
         '../graphdata/gnn_discriminant_scores.npz',
         discriminant_scores = all_discriminents.numpy(),
         y_true = all_labels.numpy(),
-        y_pred = all_preds.numpy()
+        y_pred = all_preds.numpy(),
+        lumi_weights = all_lumi_weights.numpy()
     )
 
     
