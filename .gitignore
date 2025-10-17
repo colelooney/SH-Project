@@ -1,2 +1,7 @@
 data/
 graphdata/
+GNN/_pycache_/
+GNN/ModelsGNN/
+DNN/_pycache_/
+DNN/ModelsDNN/
+_pycache_/
