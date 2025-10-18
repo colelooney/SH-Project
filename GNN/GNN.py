@@ -7,6 +7,8 @@ class GCN(torch.nn.Module):
     def __init__(self, input_size, hidden_dim):
         super().__init__()
         torch.manual_seed(12345)
+
+        p = 0.5 # dropout probability
         self.conv1 = GCNConv(input_size, hidden_dim)
         self.bn1 = nn.BatchNorm1d(hidden_dim)
         self.relu = nn.ReLU()
@@ -19,6 +21,7 @@ class GCN(torch.nn.Module):
         self.conv4 = GCNConv(hidden_dim, hidden_dim)
         self.bn4 = nn.BatchNorm1d(hidden_dim)
         self.classifier = nn.Linear(hidden_dim, 1)
+        self.dropout = nn.Dropout(p)
 
 
 
@@ -26,16 +29,20 @@ class GCN(torch.nn.Module):
         x = self.conv1(x, edge_index)
         x = self.relu(x)
         x = self.bn1(x)
+        x = self.dropout(x)
 
         x = self.conv2(x, edge_index)
         x = self.relu(x)
         x = self.bn2(x)
+        x = self.dropout(x)
 
         x = self.conv3(x, edge_index)
         x = self.relu(x)
         x = self.bn3(x)
+        x = self.dropout(x)
 
         x= global_mean_pool(x, batch)
+        x = self.dropout(x)
         x = self.classifier(x)
         x = torch.sigmoid(x)
 
