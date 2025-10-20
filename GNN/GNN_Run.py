@@ -27,31 +27,34 @@ def main():
 
 
 
+
     print(f"Training set size: {len(train_dataset)}")
     print(f"Validation set size: {len(val_dataset)}")
     print(f"Testing set size: {len(test_dataset)}")
 
     train_labels = torch.cat([data.y for data in train_dataset])
+    print(train_labels)
     num_class_0 = (train_labels == 0).sum()
     num_class_1 = (train_labels == 1).sum()
+    print(f"Number of class 0 in training set: {num_class_0}")
+    print(f"Number of class 1 in training_set: {num_class_1}")
 
-    pos_weight_value = num_class_0 / num_class_1
-    pos_weight_tensor = torch.tensor([pos_weight_value], dtype=torch.float)
 
 
-    batch_size = 64
+
+    batch_size = 256
     train_loader = DataLoader(train_dataset, batch_size = batch_size, shuffle = True)
     test_loader = DataLoader(test_dataset, batch_size = batch_size, shuffle = False)
     dev_loader = DataLoader(val_dataset, batch_size = batch_size, shuffle = False)
 
-    hidden_dim = 16
-    learning_rate = 0.01
+    hidden_dim = 128
+    learning_rate = 0.0005
 
     model = GCN(input_size, hidden_dim)
-    optimizer = torch.optim.Adam(model.parameters(), lr = learning_rate, weight_decay = 5e-4)
-    criterion = torch.nn.BCELoss(weight = pos_weight_tensor)
+    optimizer = torch.optim.Adam(model.parameters(), lr = learning_rate, weight_decay = 1e-3)
+    criterion = torch.nn.BCELoss()
 
-    num_epochs = 10
+    num_epochs = 50
 
     for epoch in range(num_epochs):
         model.train()
@@ -76,6 +79,7 @@ def main():
     all_val_labels = []
     all_val_probs = []
     all_val_discriminents = []
+    all_val_lumi_weights = []
     with torch.no_grad():
         for batch in dev_loader:
             out = model(batch.x, batch.edge_index, batch.batch)
@@ -89,12 +93,14 @@ def main():
             all_val_labels.append(batch.y.cpu())
             all_val_probs.append(out.cpu().squeeze())
             discriminant_scores = out.squeeze() - (1 - out).squeeze()
+            all_val_lumi_weights.append(batch.lumi_weight.cpu())
             all_val_discriminents.append(discriminant_scores.cpu())
     
     all_val_preds = torch.cat(all_val_preds)
     all_val_labels = torch.cat(all_val_labels)
     all_val_probs = torch.cat(all_val_probs)
     all_val_discriminents = torch.cat(all_val_discriminents)
+    all_val_lumi_weights = torch.cat(all_val_lumi_weights)
 
 
     avg_test_loss = total_dev_loss / len(val_dataset)
@@ -118,7 +124,7 @@ def main():
         discriminant_scores = all_val_discriminents.numpy(),
         y_true = all_val_labels.numpy(),
         y_pred = all_val_preds.numpy(),
-        lumi_weights = all_lumi_weights.numpy()
+        lumi_weights = all_val_lumi_weights.numpy()
     )
 
 
