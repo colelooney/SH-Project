@@ -7,7 +7,7 @@ from torch_geometric.data import Dataset, Data
 from sklearn.neighbors import kneighbors_graph
 
 hfivesdir = '../data/new_Input_CP_Studies_llqq_LinearTerm_13th_October2025.h5'
-graphsdir = "../graphdata/CP_Studies_llqq_graphs"
+graphsdir = "../graphdata/CP_Studies_llqq_graphs_no_d0_dz"
 
 class CPDataSet(Dataset):
     def __init__(self,root, transform = None, pre_transform = None, pre_filter = None):
@@ -51,6 +51,15 @@ class CPDataSet(Dataset):
         valid_mask = constant_features[:,:,-1] > 0 #mask for valid constituents based on pT > 0
         constant_features = np.nan_to_num(constant_features, nan=0.0) #fill NaNs with 0
 
+        features_to_remove = ['constituent_D0', 'constituent_DZ']
+        indices_to_remove = [feature_names.index(name) for name in features_to_remove]
+
+        print(f"Original features: {feature_names}")
+        print(f"Removing features: {features_to_remove} at indices {indices_to_remove}")
+        
+        kept_feature_names = [name for i, name in enumerate(feature_names) if i not in indices_to_remove]
+        print(f"Features to be used: {kept_feature_names}")
+
         num_events = constant_features.shape[0] #number fo events
         for i in range(num_events):
             mask = valid_mask[i] #mask for valid constituents in event i
@@ -61,10 +70,12 @@ class CPDataSet(Dataset):
 
             if valid_nodes.shape[0] < 2:
                 continue
+
+            valid_nodes = np.delete(valid_nodes, indices_to_remove, axis=1)
             
 
             node_feats = self.__get_node_features(valid_nodes) #get node features tensor
-            edge_index = self.__get_edge_index(valid_nodes,feature_names) #get edge index tensor
+            edge_index = self.__get_edge_index(valid_nodes,kept_feature_names) #get edge index tensor
 
             label = self._get_labels(i, event_data_local) #get label tensor
 
