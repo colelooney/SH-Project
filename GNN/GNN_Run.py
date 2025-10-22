@@ -9,7 +9,7 @@ import numpy as np
 
 
 def main():
-    dataset = CPDataSet(root = '../graphdata/CP_Studies_llqq_graphs')
+    dataset = CPDataSet(root = '../graphdata/CP_Studies_llqq_graphs_20th_October')
 
     torch.manual_seed(12345)
     dataset = dataset.shuffle()
@@ -54,7 +54,7 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), lr = learning_rate, weight_decay = 1e-3)
     criterion = torch.nn.BCELoss()
 
-    num_epochs = 50
+    num_epochs = 10
 
     for epoch in range(num_epochs):
         model.train()
