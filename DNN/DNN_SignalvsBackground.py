@@ -1,5 +1,6 @@
-from preprocess_data import X_train_tensor, X_test_tensor, y_train_tensor, y_test_tensor, weights, lumi_test
+from preprocess_large_data import X_train_tensor, X_test_tensor, y_train_tensor, y_test_tensor, lumi_test
 import torch
+# from preprocess_data import X_train_tensor, X_test_tensor, y_train_tensor, y_test_tensor, lumi_test
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
@@ -89,7 +90,7 @@ def main():
 
     #save discriminant scores and lumi weights for plotting
     np.savez(
-        '../data/dnn_discriminant_scores_and_lumi_weights.npz',
+        f'../data/dnn_discriminant_scores_and_lumi_weights_linear_odd.npz',
         discriminant_scores = discriminant_scores.numpy(),
         Lumi_weights = lumi_test.to_numpy(),
         y_true = y_true,

@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-data = np.load('../data/dnn_discriminant_scores_and_lumi_weights.npz')
+data = np.load('../data/dnn_discriminant_scores_and_lumi_weights_linear_odd.npz')
 discriminant_scores = data['discriminant_scores']
 Lumi_weights = data['Lumi_weights']
 
@@ -14,7 +14,7 @@ def main():
     plt.ylabel('Weighted Event Count')
     plt.xlim(-1,1)
     plt.grid(False)
-    plt.savefig('../plots/DNN_Discriminant_vs_LumiWeight.png')
+    plt.savefig('../plots/DNN_Discriminant_vs_LumiWeight_linear_odd.png')
     plt.show()
 
 

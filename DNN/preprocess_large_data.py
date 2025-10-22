@@ -15,20 +15,24 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 # relative_path = './data/new_Input_CP_Studies_llqq_LinearTerm_29_September2025.h5' #Path to first data file
-relative_path = '../data/new_Input_CP_Studies_llqq_LinearTerm_13th_October2025.h5'
+# relative_path = '../data/new_Input_CP_Studies_llqq_LinearTerm_13th_October2025.h5'
+relative_path = '../data/s2286706/new_Input_CP_Studies_llqq_LinearTerm_20th_October2025.h5'
 with h5py.File(relative_path) as f:
     df = pd.DataFrame(f['LargeRJet']['1d'][:])
 
-train = df['event_number'] % 2 == 0 # train on even event numbers
-test = df['event_number'] % 2 == 1 # test on odd event numbers
+train = df[df['EventNumber'] % 2 ==1] # train on odd event numbers
+test = df[df['EventNumber'] % 2 == 0] # test on even event numbers
 
-X_train = train.drop(columns=['Lumi_weight','event_number'])
-y_train = train['Lumi_weight'].copy()
+print(train)
 
-X_test = test.drop(columns=['Lumi_weight','event_number'])
-y_test = test['Lumi_weight'].copy()
 lumi_train =  train['Lumi_weight'].copy()
 lumi_test = test['Lumi_weight'].copy()
+
+y_train = train['Lumi_weight'].copy()
+X_train = train.drop(columns=['Lumi_weight','EventNumber'])
+
+y_test = test['Lumi_weight'].copy()
+X_test = test.drop(columns=['Lumi_weight','EventNumber'])
 
 y_train[y_train>0] = 1
 y_train[y_train<0] = 0
