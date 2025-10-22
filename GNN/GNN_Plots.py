@@ -14,7 +14,7 @@ def main():
     plt.ylabel('Weighted Event Count')
     plt.xlim(-1,1)
     plt.grid(False)
-    plt.savefig('../plots/GNN_Discriminant_vs_LumiWeight.png')
+    plt.savefig('../plots/GNN_Discriminant_vs_LumiWeight_large.png')
     plt.show()
 
 
