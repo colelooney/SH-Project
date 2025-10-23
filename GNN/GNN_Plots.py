@@ -1,11 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-data = np.load('../graphdata/gnn_discriminant_score_validation_overfit.npz')
+data = np.load('../graphdata/gnn_discriminant_scores_validation_overfit.npz')
 discriminant_scores = data['discriminant_scores']
 Lumi_weights = data['lumi_weights']
 
-test = np.load('../graphdata/gnn_discriminant_score_overfit.npz')
+test = np.load('../graphdata/gnn_discriminant_scores_overfit.npz')
 test_discriminant_scores = test['discriminant_scores']
 Lumi_weights_test = test['lumi_weights']
 
