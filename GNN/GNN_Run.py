@@ -26,11 +26,11 @@ def main():
     val_dataset = test_val_dataset[dev_idx:]
 
     #test to see if model can overfit, i.e. see if model is defined correctly and data processing correctly
-    train_dataset=  dataset[:1000]
-    test_val_dataset = dataset[500:1500] #check with data leakage in val set
+    train_dataset=  dataset[:100]
+    test_val_dataset = dataset[50:150] #check with data leakage in val set
 
-    val_dataset = test_val_dataset[0:500]
-    test_dataset = test_val_dataset[500:]
+    val_dataset = test_val_dataset[0:50]
+    test_dataset = test_val_dataset[50:]
 
 
 
@@ -49,7 +49,7 @@ def main():
 
 
 
-    batch_size = 256
+    batch_size = 16
     train_loader = DataLoader(train_dataset, batch_size = batch_size, shuffle = True)
     test_loader = DataLoader(test_dataset, batch_size = batch_size, shuffle = False)
     dev_loader = DataLoader(val_dataset, batch_size = batch_size, shuffle = False)
@@ -61,7 +61,7 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), lr = learning_rate, weight_decay = 1e-3)
     criterion = torch.nn.BCELoss()
 
-    num_epochs = 10
+    num_epochs = 100
 
     for epoch in range(num_epochs):
         model.train()
