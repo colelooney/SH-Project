@@ -25,6 +25,13 @@ def main():
     test_dataset = test_val_dataset[:dev_idx]
     val_dataset = test_val_dataset[dev_idx:]
 
+    #test to see if model can overfit, i.e. see if model is defined correctly and data processing correctly
+    train_dataset=  dataset[:1000]
+    test_val_dataset = dataset[500:1500] #check with data leakage in val set
+
+    val_dataset = test_val_dataset[0:500]
+    test_dataset = test_val_dataset[500:]
+
 
 
 
@@ -120,7 +127,7 @@ def main():
     print("Shape of discriminant_scores tensor:", all_val_discriminents.shape)
 
     np.savez(
-        '../graphdata/gnn_discriminant_scores_validation.npz',
+        '../graphdata/gnn_discriminant_scores_validation_overfit.npz',
         discriminant_scores = all_val_discriminents.numpy(),
         y_true = all_val_labels.numpy(),
         y_pred = all_val_preds.numpy(),
@@ -175,7 +182,7 @@ def main():
     print("Shape of discriminant_scores tensor:", all_discriminents.shape)
 
     np.savez(
-        '../graphdata/gnn_discriminant_scores.npz',
+        '../graphdata/gnn_discriminant_scores_overfit.npz',
         discriminant_scores = all_discriminents.numpy(),
         y_true = all_labels.numpy(),
         y_pred = all_preds.numpy(),
