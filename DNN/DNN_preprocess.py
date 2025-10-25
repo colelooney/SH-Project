@@ -15,7 +15,7 @@ import argparse
 import joblib
 
 
-def main(input_path):
+def main(input_path, save_path):
     with h5py.File(input_path) as f:
         df = pd.DataFrame(f['LargeRJet']['1d'][:])
 
@@ -68,12 +68,13 @@ def main(input_path):
         'lumi_test': lumi_test_tensor
     }
 
-    torch.save(tensors, '../data/processed/data_tensors.pt')
+    torch.save(tensors, save_path)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser
 
     parser.add_argument('--input_path',required = False, type = str, default = '../data/s2286706/new_Input_CP_Studies_llqq_LinearTerm_20th_October2025.h5')
+    parser.add_argument('--save_path', required = False, type = str, default = '../data/processed/data_tensors.pt')
 
     args = parser.parse_args()
-    main(args.input_path)
+    main(input_path = args.input_path, save_path = args.save_path)
