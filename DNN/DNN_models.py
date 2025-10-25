@@ -1,11 +1,23 @@
+"""
+Cole Looney 25/10/2025
+
+DNN_models.py
+
+Define Deep Neural Network Model and Early Stopper
+
+Arch:
+Three layers with 64 hidden dimensions, binary classification
+"""
+
 
 import torch.nn as nn
-
-from preprocess_large_data import X_train_tensor
 hidden_dim = 64
 output_dim = 1
 
 class DNN(nn.Module):
+    """
+    define model architecture
+    """
     def __init__(self, input_size):
         super(DNN, self).__init__()
         self.layers = nn.Sequential(
@@ -21,6 +33,12 @@ class DNN(nn.Module):
         return self.layers(x)
     
 class EarlyStopper:
+    """
+    Class to stop training early
+
+    patience: how many times validation loss can increase before early stopping kicks in
+    min_delta = ignore small increases in val loss
+    """
     def __init__(self,patience = 1, min_delta = 0):
         self.patience = patience
         self.min_delta = min_delta
