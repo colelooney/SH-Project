@@ -39,7 +39,7 @@ def main(tensor_path, model_path, learning_rate, batch_size, num_epochs):
     criterion = nn.BCELoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-    early_stopper = EarlyStopper(patience = 3, min_delta = 1)
+    early_stopper = EarlyStopper(patience = 3, min_delta = .1)
 
     
 
