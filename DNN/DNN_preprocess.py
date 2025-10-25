@@ -2,11 +2,16 @@
 """
 Cole Looney
 
-Data Preprocessing Script
+DNN_preprocess.py
+
+Process 1d decay data from h5py to PyTorch tensors
+
+arguments:
+--input_path: location of h5 file
+--save_path: path to save dictionary containing split dataset tensors
 """
 
 import h5py
-import numpy as np
 import pandas as pd
 import torch
 from sklearn.model_selection import train_test_split
