@@ -1,4 +1,4 @@
-from preprocess_large_data import X_train_tensor, X_test_tensor, y_train_tensor, y_test_tensor, lumi_test
+from preprocess_large_data import X_train_tensor, X_test_tensor, y_train_tensor, y_test_tensor, lumi_test_tensor
 import torch
 # from preprocess_data import X_train_tensor, X_test_tensor, y_train_tensor, y_test_tensor, lumi_test
 import torch.nn as nn
@@ -11,7 +11,6 @@ input_dim = X_train_tensor.shape[1]
 hidden_dim = 64
 output_dim = 1 #Binary Classifcation
 
-print("\nDefining the DNN model...")
 class DNN(nn.Module):
     def __init__(self, input_size):
         super(DNN, self).__init__()
@@ -90,9 +89,9 @@ def main():
 
     #save discriminant scores and lumi weights for plotting
     np.savez(
-        f'../data/dnn_discriminant_scores_and_lumi_weights_linear_odd.npz',
+        f'../data/dnn_discriminant_scores_and_lumi_weights_linear_even.npz',
         discriminant_scores = discriminant_scores.numpy(),
-        Lumi_weights = lumi_test.to_numpy(),
+        Lumi_weights = lumi_test_tensor.numpy(),
         y_true = y_true,
         y_pred = y_pred
     )

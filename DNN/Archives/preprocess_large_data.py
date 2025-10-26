@@ -20,8 +20,8 @@ relative_path = '../data/s2286706/new_Input_CP_Studies_llqq_LinearTerm_20th_Octo
 with h5py.File(relative_path) as f:
     df = pd.DataFrame(f['LargeRJet']['1d'][:])
 
-train = df[df['EventNumber'] % 2 ==1] # train on odd event numbers
-test = df[df['EventNumber'] % 2 == 0] # test on even event numbers
+train = df[df['EventNumber'] % 2 ==0] # train on even event numbers
+test = df[df['EventNumber'] % 2 == 1] # test on odd event numbers
 
 print(train)
 
