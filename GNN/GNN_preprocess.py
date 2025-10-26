@@ -10,6 +10,9 @@ arguments:
 --graphdir: directory path to where processed data objects are stored
 --lepton_only: If True, only keep constituents on leptons, default is True
 
+--test_size: test size for datasplit, validation dataset and test dataset size equal
+--save_path: path to save split dataset dictionary
+
 """
 
 
@@ -153,7 +156,8 @@ def data_splitter(graphsdir,test_size,save_path):
     dataset_dict = {
         'train_dataset':train_dataset,
         'val_dataset':val_dataset,
-        'test_dataset':test_dataset
+        'test_dataset':test_dataset,
+        'input_size':input_size
     }
 
     torch.save(dataset_dict,save_path)
@@ -165,7 +169,7 @@ if __name__ == '__main__':
     parser.add_argument('--graphdir',type=str,default="../graphdata/CP_Studies_llqq_graphs_20th_October_Quadratic", required = False)
     parser.add_argument('--lepton_only',type = bool,default = True, required = False)
     parser.add_argument('--test_size',type=float,required=False,default=0.25)
-    parser.add_argument('--save_path',type=str,required=False, default = '../graphdata/dataset_dict')
+    parser.add_argument('--save_path',type=str,required=False, default = '../graphdata/dataset_dict.pt')
 
     args = parser.parse_args()
     dataset = CPDataSet(root = args.graphsdir,
