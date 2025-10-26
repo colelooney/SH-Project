@@ -134,11 +134,38 @@ class CPDataSet(Dataset):
             data.feature_names = self.feature_names
         return data
     
+def data_splitter(graphsdir,test_size,save_path):
+    dataset = CPDataSet(root = graphsdir)
+
+    torch.manual_seed(12345)
+    dataset = dataset.shuffle()
+    input_size = dataset.num_node_features
+
+    split_idx = int((1-2*test_size) * len(dataset))
+
+    train_dataset = dataset[:split_idx]
+    test_val_dataset = dataset[split_idx:]
+
+    dev_idx = int(0.5 * len(test_val_dataset))
+    test_dataset = test_val_dataset[:dev_idx]
+    val_dataset = test_val_dataset[dev_idx:]
+
+    dataset_dict = {
+        'train_dataset':train_dataset,
+        'val_dataset':val_dataset,
+        'test_dataset':test_dataset
+    }
+
+    torch.save(dataset_dict,save_path)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--hfivesdir',type=str,required=False, default = '../data/s2286706/new_Input_CP_Studies_llqq_QuadraticTerm_20th_October2025.h5')
     parser.add_argument('--graphdir',type=str,default="../graphdata/CP_Studies_llqq_graphs_20th_October_Quadratic", required = False)
     parser.add_argument('--lepton_only',type = bool,default = True, required = False)
+    parser.add_argument('--test_size',type=float,required=False,default=0.25)
+    parser.add_argument('--save_path',type=str,required=False, default = '../graphdata/dataset_dict')
 
     args = parser.parse_args()
     dataset = CPDataSet(root = args.graphsdir,
@@ -150,3 +177,9 @@ if __name__ == '__main__':
     print(f"Example graph:\n{dataset[0]}")
     print(f"Node features shape: {dataset[0].x.shape}")
     print(f"Edge index shape: {dataset[0].edge_index.shape}")
+
+    print(f'\nsplitting datasets with test size {args.test_size}')
+    data_splitter(graphsdir=args.graphdir,
+                  test_size=args.test_size,
+                  save_path=args.save_path)
+    print('\nGraph data processing complete')
