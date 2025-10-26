@@ -33,10 +33,10 @@ def main(input_path, save_path):
     y[y<0] = 0
 
     #Split data into train and validation + testing set
-    X_train, X_test_val, y_train, y_test_val, lumi_train, lumi_test_val = train_test_split(X, y,lumi_weights, test_size=0.2, random_state=42, stratify = y)
+    X_train, X_test_val, y_train, y_test_val, lumi_train, lumi_test_val = train_test_split(X, y,lumi_weights, test_size=0.2, random_state=42)
 
     #splti validation and testing into two equally sized sets
-    X_val, X_test, y_val, y_test, lumi_val, lumi_test = train_test_split(X_test_val,y_test_val,lumi_test_val,test_size = 0.5,stratify=  y, random_state = 42)
+    X_val, X_test, y_val, y_test, lumi_val, lumi_test = train_test_split(X_test_val,y_test_val,lumi_test_val,test_size = 0.5,stratify=  y_test_val, random_state = 42)
 
     scaler = StandardScaler()
     X_train = scaler.fit_transform(X_train)
@@ -47,16 +47,16 @@ def main(input_path, save_path):
     joblib.dump(scaler, 'scaler.joblib')
 
     X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
-    X_val_tensor = torch.tensor(X_val, dype=torch.float32)
+    X_val_tensor = torch.tensor(X_val, dtype=torch.float32)
     X_test_tensor = torch.tensor(X_test, dtype=torch.float32)
 
-    y_train_tensor = torch.tensor(y_train, dtype=torch.long)
-    y_val_tensor=torch.tensor(y_val, dtype=torch.long)
-    y_test_tensor = torch.tensor(y_test, dtype=torch.long)
+    y_train_tensor = torch.tensor(y_train.to_numpy(), dtype=torch.long)
+    y_val_tensor=torch.tensor(y_val.to_numpy(), dtype=torch.long)
+    y_test_tensor = torch.tensor(y_test.to_numpy(), dtype=torch.long)
 
-    lumi_train_tensor=torch.tensor(lumi_train, dtype=torch.float32)
-    lumi_val_tensor = torch.tensor(lumi_val, dtype=torch.float32)
-    lumi_test_tensor = torch.tensor(lumi_test, dtype=torch.float32)
+    lumi_train_tensor=torch.tensor(lumi_train.to_numpy(), dtype=torch.float32)
+    lumi_val_tensor = torch.tensor(lumi_val.to_numpy(), dtype=torch.float32)
+    lumi_test_tensor = torch.tensor(lumi_test.to_numpy(), dtype=torch.float32)
 
     #bundle tensors into a dictionary
     tensors = {
@@ -76,7 +76,7 @@ def main(input_path, save_path):
     torch.save(tensors, save_path)
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser
+    parser = argparse.ArgumentParser()
 
     parser.add_argument('--input_path',required = False, type = str, default = '../data/s2286706/new_Input_CP_Studies_llqq_LinearTerm_20th_October2025.h5')
     parser.add_argument('--save_path', required = False, type = str, default = '../data/processed/data_tensors.pt')
