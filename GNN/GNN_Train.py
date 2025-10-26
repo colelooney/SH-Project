@@ -1,9 +1,20 @@
+"""
+Cole Looney 26/10/2025
+
+GNN_train.py
+
+Train Graph Network with Early Stopping
+
+arguments:
+--dict_path: path to dictionary containing datasets
+--hidden_dim: number of hidden dimensions in model
+--num_epochs: maximum number of training epochs
+--learning_rate: model learning rate
+--batch_size: DataLoader batch size
+"""
 from GNN import GCN, EarlyStopper
 import torch
 from torch_geometric.data import DataLoader
-import pandas as pd
-import os.path as osp
-from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_auc_score
 import numpy as np
 import argparse
 
@@ -61,7 +72,7 @@ def main(dict_path,batch_size,hidden_dim,learning_rate,num_epochs):
                 loss = criterion(out,batch.y.float().unsqueeze(1))
 
                 total_val_loss += loss.item() * batch.num_graphs
-                
+
             validation_losses.append(total_val_loss)
             if early_stopper.early_stop(total_val_loss):
                 break
@@ -79,11 +90,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--dict_path',type=str,default='../graphdata/dataset_dict.pt',required=False)
     parser.add_argument('--hidden_dim',type=int,default=128,required=False)
+    parser.add_argument('--batch_size',default = 128, type = int, required = False)
     parser.add_argument('--learning_rate',type=float,default=0.005,required=False)
     parser.add_argument('--num_epochs',type=int,default=50,required=False)
     args = parser.parse_args()
     main(dict_path=args.dict_path,
          hidden_dim=args.hidden_dim,
+         batch_size=args.batch_size,
          learning_rate=args.learning_rate,
          num_epochs=args.num_epochs)
 
