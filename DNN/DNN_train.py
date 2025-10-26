@@ -24,11 +24,11 @@ import argparse
 def main(tensor_path, model_path, learning_rate, batch_size, num_epochs):
 
     data_dict = torch.load(tensor_path)
-    X_train_tensor = data_dict.X_train
-    X_val_tensor =  data_dict.X_val
+    X_train_tensor = data_dict['X_train']
+    X_val_tensor =  data_dict['X_val']
 
-    y_train_tensor = data_dict.y_train
-    y_val_tensor = data_dict.y_val
+    y_train_tensor = data_dict['y_train']
+    y_val_tensor = data_dict['y_val']
 
     input_size = X_train_tensor.shape[1]
     learning_rate = learning_rate
@@ -65,8 +65,9 @@ def main(tensor_path, model_path, learning_rate, batch_size, num_epochs):
             total_val_loss = 0
             for i, (features, labels) in enumerate(val_loader):
                 probs_pplus = model(features)
-                total_val_loss += criterion(probs_pplus,labels)
+                total_val_loss += criterion(probs_pplus,labels.unsqueeze(1))
             if early_stopper.early_stop(total_val_loss):
+                print('Early Stopping due to no improvement in validation loss')
                 break
 
 
