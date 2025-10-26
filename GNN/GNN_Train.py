@@ -1,42 +1,39 @@
-from GNN import GCN
+from GNN import GCN, EarlyStopper
 import torch
-from preprocess_graph_data import CPDataSet
 from torch_geometric.data import DataLoader
 import pandas as pd
 import os.path as osp
 from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_auc_score
 import numpy as np
+import argparse
 
+def main(dict_path,batch_size,hidden_dim,learning_rate,num_epochs):
+    data_dict = torch.load(dict_path)
 
-def main():
-    dataset = CPDataSet(root = '../graphdata/CP_Studies_llqq_graphs')
-
-    torch.manual_seed(12345)
-    dataset = dataset.shuffle()
-    input_size = dataset.num_node_features
-
-    num_graphs = int(len(dataset))
-    split_idx = int(0.8 * len(dataset))
-
-    train_dataset = dataset[:split_idx]
-    test_dataset = dataset[split_idx:]
+    train_dataset = data_dict.train_dataset
+    val_dataset = data_dict.val_dataset
+    input_size = data_dict.input_size
 
     print(f"Training set size: {len(train_dataset)}")
-    print(f"Testing set size: {len(test_dataset)}")
+    print(f"Validation set size: {len(val_dataset)}")
 
+    train_labels = torch.cat([data.y for data in train_dataset])
+    num_class_0 = (train_labels == 0).sum()
+    num_class_1 = (train_labels == 1).sum()
+    print(f"Number of class 0 in training set: {num_class_0}")
+    print(f"Number of class 1 in training_set: {num_class_1}")
 
-    batch_size = 64
     train_loader = DataLoader(train_dataset, batch_size = batch_size, shuffle = True)
-    test_loader = DataLoader(test_dataset, batch_size = batch_size, shuffle = False)
-
-    hidden_dim = 16
-    learning_rate = 0.01
+    dev_loader = DataLoader(val_dataset, batch_size = batch_size, shuffle = False)
 
     model = GCN(input_size, hidden_dim)
-    optimizer = torch.optim.Adam(model.parameters(), lr = learning_rate, weight_decay = 5e-4)
+    early_stopper = EarlyStopper(patience = 2, min_delta = .05)
+    optimizer = torch.optim.Adam(model.parameters(), lr = learning_rate, weight_decay = 1e-3)
     criterion = torch.nn.BCELoss()
 
-    num_epochs = 1
+    training_losses = []
+    training_epoch = []
+    validation_losses = []
 
     for epoch in range(num_epochs):
         model.train()
@@ -51,62 +48,44 @@ def main():
             total_loss += loss.item() * batch.num_graphs
 
         avg_loss = total_loss / len(train_dataset)
+        training_losses.append(avg_loss)
+        training_epoch.append(epoch)
         print(f"Epoch {epoch+1}/{num_epochs}, Average Training Loss: {avg_loss:.4f}")
-    
+
+        #check validation loss for early stopping
+        model.eval()
+        total_val_loss = 0
+        with torch.no_grad():
+            for batch in dev_loader:
+                out = model(batch.x,batch.edge_index,batch.batch)
+                loss = criterion(out,batch.y.float().unsqueeze(1))
+
+                total_val_loss += loss.item() * batch.num_graphs
+                
+            validation_losses.append(total_val_loss)
+            if early_stopper.early_stop(total_val_loss):
+                break
+
     torch.save(model.state_dict(), 'ModelsGNN/gnn_model.pth')
 
-    model.eval()
-    total_test_loss = 0 
-    all_preds = []
-    all_labels = []
-    all_probs = []
-    all_discriminents = []
-    with torch.no_grad():
-        for batch in test_loader:
-            out = model(batch.x, batch.edge_index, batch.batch)
-
-            loss = criterion(out, batch.y.float().unsqueeze(1))
-            total_test_loss += loss.item() * batch.num_graphs
-
-            preds = (out > 0.5).long().squeeze()
-
-            all_preds.append(preds.cpu())
-            all_labels.append(batch.y.cpu())
-            all_probs.append(out.cpu().squeeze())
-            discriminant_scores = out.squeeze() - (1 - out).squeeze()
-            all_discriminents.append(discriminant_scores.cpu())
+    np.savez('../graphdata/training_loss',
+             training_loss = np.array(training_losses),
+             epoch = np.array(training_epoch),
+             validation_loss=np.array(validation_losses)
+             )
     
-    all_preds = torch.cat(all_preds)
-    all_labels = torch.cat(all_labels)
-    all_probs = torch.cat(all_probs)
-    all_discriminents = torch.cat(all_discriminents)
-
-
-    avg_test_loss = total_test_loss / len(test_dataset)
-    accuracy = accuracy_score(all_labels, all_preds)
-    precision = precision_score(all_labels, all_preds)
-    recall = recall_score(all_labels, all_preds)
-    auc = roc_auc_score(all_labels, all_probs)
-
-    print(f"Average Test Loss: {avg_test_loss:.4f}")
-    print(f"Accuracy: {accuracy:.4f}")
-    print(f"Precision: {precision:.4f}")
-    print(f"Recall: {recall:.4f}")
-
-    print("\n--- Final Output Inspection ---")
-    print("Shape of probabilities_x p_plus tensor:", all_probs.shape)
-    print("Shape of discriminant_scores tensor:", all_discriminents.shape)
-
-    np.savez(
-        '../graphdata/gnn_discriminant_scores.npz',
-        discriminant_scores = all_discriminents.numpy(),
-        y_true = all_labels.numpy(),
-        y_pred = all_preds.numpy()
-    )
-
     
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--dict_path',type=str,default='../graphdata/dataset_dict.pt',required=False)
+    parser.add_argument('--hidden_dim',type=int,default=128,required=False)
+    parser.add_argument('--learning_rate',type=float,default=0.005,required=False)
+    parser.add_argument('--num_epochs',type=int,default=50,required=False)
+    args = parser.parse_args()
+    main(dict_path=args.dict_path,
+         hidden_dim=args.hidden_dim,
+         learning_rate=args.learning_rate,
+         num_epochs=args.num_epochs)
 
 
     
