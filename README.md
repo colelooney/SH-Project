@@ -58,8 +58,3 @@ The project handles the entire pipeline, from data preprocessing of large HDF5 d
 
 ### Usage
 Navigate to the `DNN` or `GNN` directory and run the python scripts to train models and visualize results.
-
----
-
-## License
-This project is licensed under the **MIT License**. See the `LICENSE` file for more details.
