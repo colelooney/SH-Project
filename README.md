@@ -18,13 +18,13 @@ The project handles the entire pipeline, from data preprocessing of large HDF5 d
 ---
 
 ## 📂 Repository Structure
-├── DNN/ # Contains the Deep Neural Network implementation
-├── GNN/ # Contains the Graph Neural Network implementation
-├── data/ # Data files for the project
-├── plots/ # Output directory for plots and visualizations
-├── .gitignore # Git ignore file
-├── README.md # Project README file
-└── requirements.txt # Python dependencies
+- DNN/ # Contains the Deep Neural Network implementation
+- GNN/ # Contains the Graph Neural Network implementation
+- data/ # Data files for the project
+- plots/ # Output directory for plots and visualizations
+- .gitignore # Git ignore file
+- README.md # Project README file
+- requirements.txt # Python dependencies
 
 ---
 
