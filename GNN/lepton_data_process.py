@@ -11,25 +11,26 @@ import pandas as pd
 import torch
 import os.path as osp
 from torch_geometric.data import Dataset, Data
+import argparse
 
-hfivesdir = '../data/s2286706/new_Input_CP_Studies_llqq_LinearTerm_20th_October2025.h5'
-graphsdir = "../graphdata/CP_Studies_llqq_graphs_20th_October_Linear"
+hfivesdir = '../data/s2286706/new_Input_CP_Studies_llqq_QuadraticTerm_20th_October2025.h5'
+graphsdir = "../graphdata/CP_Studies_llqq_graphs_20th_October_Quadratic"
 
 class CPDataSet(Dataset):
-    def __init__(self,root, transform = None, pre_transform = None, pre_filter = None):
+    def __init__(self,root, hfivesdir, transform = None, pre_transform = None, pre_filter = None):
         self.event_data = None #store as attribute to access later
         self.feature_names = None
+        self.hfivesdir = hfivesdir
         super().__init__(root,transform,pre_transform,pre_filter) #calls process if data not processed
 
         if osp.exists(self.processed_paths[1]): #load event data info if it exists
             self.event_data = torch.load(self.processed_paths[1], weights_only = False)
         if osp.exists(self.processed_paths[2]):
             self.feature_names = torch.load(self.processed_paths[2], weights_only = False)
-
     
     @property
     def raw_file_names(self):
-        return [osp.basename(hfivesdir)]
+        return [osp.basename(self.hfivesdir)]
     
     @property
     def processed_file_names(self):
@@ -41,7 +42,7 @@ class CPDataSet(Dataset):
 
     def process(self):
         # load raw data
-        with h5py.File(hfivesdir, 'r') as f:
+        with h5py.File(self.hfivesdir, 'r') as f:
             df_1d = pd.DataFrame(f['LargeRJet']['1d'][:])
             df_1d['lumi_label'] = 0 #initialize new column for labels
             df_1d.loc[df_1d['Lumi_weight'] > 0, 'lumi_label'] = 1 #label 1 for signal
@@ -66,6 +67,8 @@ class CPDataSet(Dataset):
         isLep_idx = feature_names.index('constituent_isLep')
 
         num_events = constant_features.shape[0] #number fo events
+        graph_save_idx = 0
+        processed_event_data = []
         for i in range(num_events):
             mask = valid_mask[i] #mask for valid constituents in event i
             valid_nodes = constant_features[i,mask,:] #get valid constituents for event i
@@ -83,11 +86,17 @@ class CPDataSet(Dataset):
 
             data = Data(x = node_feats, edge_index = edge_index, y = label, lumi_weight = lumi_weight_tensor) #create PyG Data object
 
-            torch.save(data, osp.join(self.processed_dir, f'data_{i}.pt')) #save graph data object
+            torch.save(data, osp.join(self.processed_dir, f'data_{graph_save_idx}.pt')) #save graph data object
+            processed_event_data.append(df_1d.iloc[i])
+            graph_save_idx += 1
 
             if (i + 1) % 5000 == 0:
                 print(f'Processed {i+1}/{num_events} events.')
-    
+
+        final_event_df = pd.DataFrame(processed_event_data)
+        print(f"\nProcessing complete. Created {len(final_event_df)} valid graphs.")
+        print("Saving filtered event-level information...")
+        torch.save(final_event_df, self.processed_paths[1])
 
     def __get_node_features(self, valid_nodes):
         return torch.tensor(valid_nodes, dtype = torch.float) #all features for now
@@ -117,7 +126,8 @@ class CPDataSet(Dataset):
         return data
     
 if __name__ == '__main__':
-    dataset = CPDataSet(root = graphsdir) #initialize and process dataset if needed
+    
+    dataset = CPDataSet(root = graphsdir, hfivesdir=hfivesdir) #initialize and process dataset if needed
 
     print(f"\nDataset loaded successfully!")
     print(f"Number of graphs: {len(dataset)}") #number of events with valid graphs

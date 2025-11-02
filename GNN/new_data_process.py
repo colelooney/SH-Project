@@ -6,8 +6,8 @@ import os.path as osp
 from torch_geometric.data import Dataset, Data
 from sklearn.neighbors import kneighbors_graph
 
-hfivesdir = '../data/s2286706/new_Input_CP_Studies_llqq_LinearTerm_20th_October2025.h5'
-graphsdir = "../graphdata/CP_Studies_llqq_graphs_20th_October"
+hfivesdir = '../data/new_Input_CP_Studies_llqq_LinearTerm_29_September2025.h5'
+graphsdir = "../graphdata/CP_Studies_llqq_graphs_29th_September"
 
 class CPDataSet(Dataset):
     def __init__(self,root, transform = None, pre_transform = None, pre_filter = None):

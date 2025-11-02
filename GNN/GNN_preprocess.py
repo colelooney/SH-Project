@@ -165,14 +165,14 @@ def data_splitter(graphsdir,test_size,save_path):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--hfivesdir',type=str,required=False, default = '../data/s2286706/new_Input_CP_Studies_llqq_QuadraticTerm_20th_October2025.h5')
-    parser.add_argument('--graphdir',type=str,default="../graphdata/CP_Studies_llqq_graphs_20th_October_Quadratic", required = False)
+    parser.add_argument('--hfivesdir',type=str,required=False, default = '../data/s2286706/new_Input_CP_Studies_llqq_LinearTerm_20th_October2025.h5')
+    parser.add_argument('--graphdir',type=str,default="../graphdata/CP_Studies_llqq_graphs_20th_October_Linear", required = False)
     parser.add_argument('--lepton_only',type = bool,default = True, required = False)
     parser.add_argument('--test_size',type=float,required=False,default=0.25)
     parser.add_argument('--save_path',type=str,required=False, default = '../graphdata/dataset_dict.pt')
 
     args = parser.parse_args()
-    dataset = CPDataSet(root = args.graphsdir,
+    dataset = CPDataSet(root = args.graphdir,
                          hfivesdir=args.hfivesdir,
                          lepton_only = args.lepton_only) #initialize and process dataset if needed
 

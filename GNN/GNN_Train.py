@@ -21,9 +21,9 @@ import argparse
 def main(dict_path,batch_size,hidden_dim,learning_rate,num_epochs):
     data_dict = torch.load(dict_path)
 
-    train_dataset = data_dict.train_dataset
-    val_dataset = data_dict.val_dataset
-    input_size = data_dict.input_size
+    train_dataset = data_dict['train_dataset']
+    val_dataset = data_dict['val_dataset']
+    input_size = data_dict['input_size']
 
     print(f"Training set size: {len(train_dataset)}")
     print(f"Validation set size: {len(val_dataset)}")
@@ -92,7 +92,7 @@ if __name__ == "__main__":
     parser.add_argument('--hidden_dim',type=int,default=128,required=False)
     parser.add_argument('--batch_size',default = 128, type = int, required = False)
     parser.add_argument('--learning_rate',type=float,default=0.005,required=False)
-    parser.add_argument('--num_epochs',type=int,default=50,required=False)
+    parser.add_argument('--num_epochs',type=int,default=20,required=False)
     args = parser.parse_args()
     main(dict_path=args.dict_path,
          hidden_dim=args.hidden_dim,

@@ -46,7 +46,7 @@ class GCN(torch.nn.Module):
         x= global_mean_pool(x, batch)
         x = self.dropout(x)
         x = self.classifier(x)
-        x = torch.sigmoid(x)
+        # x = torch.sigmoid(x)
 
         return x #return probabilities for binary classification
 

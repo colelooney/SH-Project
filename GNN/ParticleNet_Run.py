@@ -1,240 +1,140 @@
-from GNN import ParticleNet 
-import torch
-from preprocess_graph_data import CPDataSet
-from torch_geometric.loader import DataLoader
-from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_auc_score
+import h5py
 import numpy as np
+import pandas as pd
+import torch
+import os.path as osp
+from torch_geometric.data import Dataset, Data
+from sklearn.neighbors import kneighbors_graph
+
+hfivesdir = '../data/new_Input_CP_Studies_llqq_LinearTerm_13th_October2025.h5'
+graphsdir = "../graphdata/CP_Studies_llqq_graphs_new"
+
+class CPDataSet(Dataset):
+    def __init__(self,root, transform = None, pre_transform = None, pre_filter = None):
+        self.event_data = None #store as attribute to access later
+        super().__init__(root,transform,pre_transform,pre_filter) #calls process if data not processed
+
+        if osp.exists(self.processed_paths[1]): #load event data info if it exists
+            self.event_data = torch.load(self.processed_paths[1], weights_only = False)
+
+    
+    @property
+    def raw_file_names(self):
+        return [osp.basename(hfivesdir)]
+    
+    @property
+    def processed_file_names(self):
+        return ['data_0.pt', 'event_data_info.pt']
+    
+    def download(self):
+        pass
 
 
-def main():
-    dataset = CPDataSet(root = '../graphdata/CP_Studies_llqq_graphs')
+    def process(self):
+        # load raw data
+        with h5py.File(hfivesdir, 'r') as f:
+            df_1d = pd.DataFrame(f['LargeRJet']['1d'][:])
+            df_1d['lumi_label'] = 0 #initialize new column for labels
+            df_1d.loc[df_1d['Lumi_weight'] > 0, 'lumi_label'] = 1 #label 1 for signal
+            event_data_local = df_1d
 
-    torch.manual_seed(12345)
-    dataset = dataset.shuffle()
-    input_size = dataset.num_node_features
+            raw_constituents = f['LargeRJet']['2d'][:] #unstructued array of constituents
 
-    num_graphs = int(len(dataset))
-    split_idx = int(0.5 * len(dataset))
+        torch.save(event_data_local, self.processed_paths[1]) #save event data info for later use in label
 
-    train_dataset = dataset[:split_idx]
-    test_val_dataset = dataset[split_idx:]
+        constant_features = np.zeros(raw_constituents.shape + (len(raw_constituents.dtype.names),), dtype=np.float32)
+        feature_names = raw_constituents.dtype.names
 
-    dev_idx = int(0.5 * len(test_val_dataset))
-    test_dataset = test_val_dataset[:dev_idx]
-    val_dataset = test_val_dataset[dev_idx:]
+        for i,name in enumerate(feature_names):
+            constant_features[...,i] = raw_constituents[name]
 
+        valid_mask = constant_features[:,:,-1] > 0 #mask for valid constituents based on pT > 0
+        constant_features = np.nan_to_num(constant_features, nan=0.0) #fill NaNs with 0
 
+        features_to_remove = ['constituent_D0', 'constituent_DZ']
+        indices_to_remove = [feature_names.index(name) for name in features_to_remove]
 
-
-    print(f"Training set size: {len(train_dataset)}")
-    print(f"Validation set size: {len(val_dataset)}")
-    print(f"Testing set size: {len(test_dataset)}")
-
-    train_labels = torch.cat([data.y for data in train_dataset])
-    print(train_labels)
-    num_class_0 = (train_labels == 0).sum()
-    num_class_1 = (train_labels == 1).sum()
-    print(f"Number of class 0 in training set: {num_class_0}")
-    print(f"Number of class 1 in training_set: {num_class_1}")
-
-
-
-
-    batch_size = 256
-    train_loader = DataLoader(train_dataset, batch_size = batch_size, shuffle = True)
-    test_loader = DataLoader(test_dataset, batch_size = batch_size, shuffle = False)
-    dev_loader = DataLoader(val_dataset, batch_size = batch_size, shuffle = False)
-
-    model = ParticleNet(
-        kernel_sizes = [64, 128, 256],
-        fc_size = 128,
-        dropout = 0.3,
-        k = 16,
-        node_feat_size = dataset.num_node_features,
-        num_classes = 2
-    )
-
-    learning_rate = 0.001
-    optimizer = torch.optim.Adam(model.parameters(), lr = learning_rate, weight_decay = 1e-3)
-    criterion = torch.nn.CrossEntropyLoss()
-
-    num_epochs = 50
-
-    best_val_loss = float('inf')
-    patience = 10
-    patience_counter = 0
-
-    for epoch in range(1,num_epochs+1):
-        model.train()
-        total_loss = 0
-        for batch in train_loader:
-            optimizer.zero_grad()
-            out = model(batch)
-            loss = criterion(out, batch.y)
-
-            loss.backward()
-            optimizer.step()
-            total_loss += loss.item() * batch.num_graphs
-
-        avg_loss = total_loss / len(train_dataset)
-        print(f"Epoch {epoch+1}/{num_epochs}, Average Training Loss: {avg_loss:.4f}")
-
-        model.eval()
-        total_val_loss = 0
-        all_preds = []
-        all_labels = []
-        all_probs = []
-        with torch.no_grad():
-            for batch in dev_loader:
-                out = model(batch)
-                loss = criterion(out,batch.y)
-                total_val_loss += loss.item() * batch.num_graphs
-
-                probs = out.softmax(dim=1)[:, 1]
-                preds = (probs > 0.5).long()
-
-                all_preds.append(preds.cpu())
-                all_labels.append(batch.y.cpu())
-                all_probs.append(probs.cpu())
-        all_preds = torch.cat(all_preds)
-        all_labels = torch.cat(all_labels)
-        all_probs = torch.cat(all_probs)
-
-        avg_val_loss = total_val_loss / len(val_dataset)
-        accuracy = accuracy_score(all_labels, all_preds)
-        auc = roc_auc_score(all_labels, all_probs)
+        print(f"Original features: {feature_names}")
+        print(f"Removing features: {features_to_remove} at indices {indices_to_remove}")
         
-        print(f"Epoch: {epoch:03d}, Train Loss: {avg_loss:.4f}, "
-              f"Val Loss: {avg_val_loss:.4f}, Val Acc: {accuracy:.4f}, Val AUC: {auc:.4f}")
-        
-        if avg_val_loss < best_val_loss:
-            best_val_loss = avg_val_loss
-            torch.save(model.state_dict(), 'ModelsGNN/particlenet_best_model.pth')
-            patience_counter = 0
-            print("  -> Validation loss improved, saving model.")
-        else:
-            patience_counter += 1
-        
-        if patience_counter >= patience:
-            print(f"  -> Stopping early after {patience} epochs with no improvement.")
-            break
+        kept_feature_names = [name for i, name in enumerate(feature_names) if i not in indices_to_remove]
+        print(f"Features to be used: {kept_feature_names}")
+
+        num_events = constant_features.shape[0] #number fo events
+        for i in range(num_events):
+            mask = valid_mask[i] #mask for valid constituents in event i
+            valid_nodes = constant_features[i,mask,:] #get valid constituents for event i
+
+            lumi_weight_val = event_data_local['Lumi_weight'].iloc[i]
+            lumi_weight_tensor = torch.tensor([lumi_weight_val], dtype=torch.float)
+
+            if valid_nodes.shape[0] < 2:
+                continue
+
+            valid_nodes = np.delete(valid_nodes, indices_to_remove, axis=1)
+            
+
+            node_feats = self.__get_node_features(valid_nodes) #get node features tensor
+            edge_index = self.__get_edge_index(valid_nodes,kept_feature_names) #get edge index tensor
+
+            label = self._get_labels(i, event_data_local) #get label tensor
+
+            data = Data(x = node_feats, edge_index = edge_index, y = label, lumi_weight = lumi_weight_tensor) #create PyG Data object
+
+            torch.save(data, osp.join(self.processed_dir, f'data_{i}.pt')) #save graph data object
+
+            if (i + 1) % 5000 == 0:
+                print(f'Processed {i+1}/{num_events} events.')
     
-    torch.save(model.state_dict(), 'ModelsGNN/gnn_model.pth')
 
-    model.eval()
-    total_dev_loss = 0 
-    all_val_preds = []
-    all_val_labels = []
-    all_val_probs = []
-    all_val_discriminents = []
-    all_val_lumi_weights = []
-    with torch.no_grad():
-        for batch in dev_loader:
-            out = model(batch)
-
-            loss = criterion(out, batch.y)
-            total_dev_loss += loss.item() * batch.num_graphs
-
-            probs = out.softmax(dim=1)[:, 1]
-            preds = (probs > 0.5).long()
-
-            all_val_preds.append(preds.cpu())
-            all_val_labels.append(batch.y.cpu())
-            all_val_probs.append(probs.cpu())
-            discriminant_scores = probs - (1 - probs)
-            all_val_lumi_weights.append(batch.lumi_weight.cpu())
-            all_val_discriminents.append(discriminant_scores.cpu())
+    def __get_node_features(self, valid_nodes):
+        return torch.tensor(valid_nodes, dtype = torch.float) #all features for now
     
-    all_val_preds = torch.cat(all_val_preds)
-    all_val_labels = torch.cat(all_val_labels)
-    all_val_probs = torch.cat(all_val_probs)
-    all_val_discriminents = torch.cat(all_val_discriminents)
-    all_val_lumi_weights = torch.cat(all_val_lumi_weights)
+    def __get_edge_index(self, valid_nodes, feature_names, k_neighbors = 6):
+        # use eta and phi to construct k-NN graph
+        eta_idx = feature_names.index('constituent_eta')
+        phi_idx = feature_names.index('constituent_phi')
 
+        eta_phi_coords = valid_nodes[:, [eta_idx, phi_idx]] #extract eta and phi
 
-    avg_test_loss = total_dev_loss / len(val_dataset)
-    accuracy = accuracy_score(all_val_labels, all_val_preds)
-    precision = precision_score(all_val_labels, all_val_preds)
-    recall = recall_score(all_val_labels, all_val_preds)
-    auc = roc_auc_score(all_val_labels, all_val_probs)
+        num_constituents = valid_nodes.shape[0] #number of valid constituents
 
-    print(f"Average Val Loss: {avg_test_loss:.4f}")
-    print(f"VAL Accuracy: {accuracy:.4f}")
-    print(f"VAL Precision: {precision:.4f}")
-    print(f"VAL Recall: {recall:.4f}")
-    print(f"VAL ROC AUC: {auc:.4f}")
+        if num_constituents < 2:
+            return torch.tensor([], dtype=torch.long).reshape(2, 0)
+            
+        actual_k = min(k_neighbors, num_constituents  - 1) #adjust k if fewer constituents
 
-    print("\n--- Final Output Inspection ---")
-    print("Shape of probabilities_x p_plus tensor:", all_val_probs.shape)
-    print("Shape of discriminant_scores tensor:", all_val_discriminents.shape)
+        #create k-NN graph using sklearn
+        adjacency_matrix = kneighbors_graph(
+            eta_phi_coords, 
+            n_neighbors=actual_k, 
+            mode='connectivity', 
+            include_self=False
+        )
 
-    np.savez(
-        '../graphdata/gnn_discriminant_scores_validation.npz',
-        discriminant_scores = all_val_discriminents.numpy(),
-        y_true = all_val_labels.numpy(),
-        y_pred = all_val_preds.numpy(),
-        lumi_weights = all_val_lumi_weights.numpy()
-    )
+        # convert to edge index format
+        edge_index_sparse = adjacency_matrix.tocoo()
+        return torch.tensor(
+            np.array([edge_index_sparse.row, edge_index_sparse.col]), 
+            dtype=torch.long
+        )
 
+    def _get_labels(self, i,event_data_df): #get label for event i
+        label_val = event_data_df['lumi_label'].iloc[i]
+        return torch.tensor([label_val], dtype=torch.long)
 
-    model.eval()
-    total_test_loss = 0 
-    all_preds = []
-    all_labels = []
-    all_probs = []
-    all_discriminents = []
-    all_lumi_weights = []
-    with torch.no_grad():
-        for batch in test_loader:
-            out = model(batch)
-
-            loss = criterion(out, batch.y)
-            total_test_loss += loss.item() * batch.num_graphs
-
-            probs = out.softmax(dim = 1)[:,1]
-            preds = (probs > 0.5).long()
-
-            all_preds.append(preds.cpu())
-            all_labels.append(batch.y.cpu())
-            all_probs.append(probs.cpu())
-            discriminant_scores = probs - (1 - probs)
-            all_lumi_weights.append(batch.lumi_weight.cpu())
-            all_discriminents.append(discriminant_scores.cpu())
+    def len(self):
+        return len(self.event_data) if self.event_data is not None else 0
     
-    all_preds = torch.cat(all_preds)
-    all_labels = torch.cat(all_labels)
-    all_probs = torch.cat(all_probs)
-    all_discriminents = torch.cat(all_discriminents)
-    all_lumi_weights = torch.cat(all_lumi_weights)
-
-
-    avg_test_loss = total_test_loss / len(test_dataset)
-    accuracy = accuracy_score(all_labels, all_preds)
-    precision = precision_score(all_labels, all_preds)
-    recall = recall_score(all_labels, all_preds)
-    auc = roc_auc_score(all_labels, all_probs)
-
-    print(f"Average Test Loss: {avg_test_loss:.4f}")
-    print(f"Accuracy: {accuracy:.4f}")
-    print(f"Precision: {precision:.4f}")
-    print(f"Recall: {recall:.4f}")
-    print(f"ROC AUC: {auc:.4f}")
-
-    print("\n--- Final Output Inspection ---")
-    print("Shape of probabilities_x p_plus tensor:", all_probs.shape)
-    print("Shape of discriminant_scores tensor:", all_discriminents.shape)
-
-    np.savez(
-        '../graphdata/gnn_discriminant_scores.npz',
-        discriminant_scores = all_discriminents.numpy(),
-        y_true = all_labels.numpy(),
-        y_pred = all_preds.numpy(),
-        lumi_weights = all_lumi_weights.numpy()
-    )
-
+    def get(self, idx): #get graph data object for event idx
+        data = torch.load(osp.join(self.processed_dir, f'data_{idx}.pt'), weights_only = False)
+        return data
     
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    dataset = CPDataSet(root = graphsdir) #initialize and process dataset if needed
 
-
-    
+    print(f"\nDataset loaded successfully!")
+    print(f"Number of graphs: {len(dataset)}") #number of events with valid graphs
+    print(f"Example graph:\n{dataset[0]}")
+    print(f"Node features shape: {dataset[0].x.shape}")
+    print(f"Edge index shape: {dataset[0].edge_index.shape}")

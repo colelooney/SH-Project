@@ -1,6 +1,6 @@
 from GNN import GCN
 import torch
-from lepton_data_process import CPDataSet
+from preprocess_graph_data import CPDataSet
 from torch_geometric.data import DataLoader
 import pandas as pd
 import os.path as osp
@@ -10,20 +10,18 @@ import numpy as np
 
 def main():
     dataset = CPDataSet(root = '../graphdata/CP_Studies_llqq_graphs_20th_October_Linear')
-
+    dataset = CPDataSet(root = '../graphdata/CP_Studies_llqq_graphs_29th_September')
+    # test_dataset = CPDataSet(root = '../graphdata/CP_Studies_llqq_graphs_20th_October_Quadratic')
     torch.manual_seed(12345)
     dataset = dataset.shuffle()
     input_size = dataset.num_node_features
 
-    num_graphs = int(len(dataset))
-    split_idx = int(0.5 * len(dataset))
+    split_idx = int(0.8 * len(dataset))
 
     train_dataset = dataset[:split_idx]
-    test_val_dataset = dataset[split_idx:]
-
-    dev_idx = int(0.5 * len(test_val_dataset))
-    test_dataset = test_val_dataset[:dev_idx]
-    val_dataset = test_val_dataset[dev_idx:]
+    test_val_dataset = dataset[split_idx:] #have val be on linear term
+    val_dataset = test_val_dataset[:4000]
+    test_dataset= test_val_dataset[4000:]
 
     # #test to see if model can overfit, i.e. see if model is defined correctly and data processing correctly
     # train_dataset=  dataset[:100]
@@ -55,13 +53,13 @@ def main():
     dev_loader = DataLoader(val_dataset, batch_size = batch_size, shuffle = False)
 
     hidden_dim = 128
-    learning_rate = 0.0005
+    learning_rate = 0.0001
 
     model = GCN(input_size, hidden_dim)
     optimizer = torch.optim.Adam(model.parameters(), lr = learning_rate, weight_decay = 1e-3)
-    criterion = torch.nn.BCELoss()
+    criterion = torch.nn.BCEWithLogitsLoss()
 
-    num_epochs = 50
+    num_epochs = 20
     training_losses = []
     training_epoch = []
 
@@ -69,12 +67,14 @@ def main():
         model.train()
         total_loss = 0
         for batch in train_loader:
+            optimizer.zero_grad()
             out = model(batch.x,batch.edge_index, batch.batch)
             loss = criterion(out, batch.y.float().unsqueeze(1))
 
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
+
             optimizer.step()
-            optimizer.zero_grad()
             total_loss += loss.item() * batch.num_graphs
 
         avg_loss = total_loss / len(train_dataset)
@@ -82,9 +82,9 @@ def main():
         training_epoch.append(epoch)
         print(f"Epoch {epoch+1}/{num_epochs}, Average Training Loss: {avg_loss:.4f}")
     
-    torch.save(model.state_dict(), 'ModelsGNN/gnn_model.pth')
+    torch.save(model.state_dict(), 'ModelsGNN/gnn_model_lowlr.pth')
 
-    np.savez('../graphdata/training_loss',
+    np.savez('../graphdata/training_loss_large_linear',
              training_loss = np.array(training_losses),
              epoch = np.array(training_epoch)
              )
@@ -98,17 +98,18 @@ def main():
     all_val_lumi_weights = []
     with torch.no_grad():
         for batch in dev_loader:
-            out = model(batch.x, batch.edge_index, batch.batch)
+            logits = model(batch.x, batch.edge_index, batch.batch)
 
-            loss = criterion(out, batch.y.float().unsqueeze(1))
+            loss = criterion(logits, batch.y.float().unsqueeze(1))
             total_dev_loss += loss.item() * batch.num_graphs
 
-            preds = (out > 0.5).long().squeeze()
+            probs = torch.sigmoid(logits)
+            preds = (probs > 0.5).long().squeeze()
 
             all_val_preds.append(preds.cpu())
             all_val_labels.append(batch.y.cpu())
-            all_val_probs.append(out.cpu().squeeze())
-            discriminant_scores = out.squeeze() - (1 - out).squeeze()
+            all_val_probs.append(probs.cpu().squeeze())
+            discriminant_scores = probs.squeeze() - (1 - probs).squeeze()
             all_val_lumi_weights.append(batch.lumi_weight.cpu())
             all_val_discriminents.append(discriminant_scores.cpu())
     
@@ -136,7 +137,7 @@ def main():
     print("Shape of discriminant_scores tensor:", all_val_discriminents.shape)
 
     np.savez(
-        '../graphdata/gnn_discriminant_scores_validation_29th_September.npz',
+        '../graphdata/gnn_discriminant_scores_validation_29th_september_low_lr.npz',
         discriminant_scores = all_val_discriminents.numpy(),
         y_true = all_val_labels.numpy(),
         y_pred = all_val_preds.numpy(),
@@ -153,17 +154,18 @@ def main():
     all_lumi_weights = []
     with torch.no_grad():
         for batch in test_loader:
-            out = model(batch.x, batch.edge_index, batch.batch)
+            logits = model(batch.x, batch.edge_index, batch.batch)
 
-            loss = criterion(out, batch.y.float().unsqueeze(1))
+            loss = criterion(logits, batch.y.float().unsqueeze(1))
             total_test_loss += loss.item() * batch.num_graphs
 
-            preds = (out > 0.5).long().squeeze()
+            probs = torch.sigmoid(logits)
+            preds = (probs > 0.5).long().squeeze()
 
             all_preds.append(preds.cpu())
             all_labels.append(batch.y.cpu())
-            all_probs.append(out.cpu().squeeze())
-            discriminant_scores = out.squeeze() - (1 - out).squeeze()
+            all_probs.append(probs.cpu().squeeze())
+            discriminant_scores = probs.squeeze() - (1 - probs).squeeze()
             all_lumi_weights.append(batch.lumi_weight.cpu())
             all_discriminents.append(discriminant_scores.cpu())
     
@@ -191,7 +193,7 @@ def main():
     print("Shape of discriminant_scores tensor:", all_discriminents.shape)
 
     np.savez(
-        '../graphdata/gnn_discriminant_scores_29th_September.npz',
+        '../graphdata/gnn_discriminant_scores_29th_september_low_lr.npz',
         discriminant_scores = all_discriminents.numpy(),
         y_true = all_labels.numpy(),
         y_pred = all_preds.numpy(),
