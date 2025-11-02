@@ -15,11 +15,12 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 # relative_path = './data/new_Input_CP_Studies_llqq_LinearTerm_29_September2025.h5' #Path to first data file
-relative_path = '../data/new_Input_CP_Studies_llqq_LinearTerm_13th_October2025.h5'
+relative_path = '../../data/s2286706/new_Input_CP_Studies_llqq_LinearTerm_20th_October2025.h5'
+# relative_path = '../../data/s2286706/new_Input_CP_Studies_llqq_LinearTerm_13th_October2025.h5'
 with h5py.File(relative_path) as f:
     df = pd.DataFrame(f['LargeRJet']['1d'][:])
 
-X = df.drop(columns=['Lumi_weight'])
+X = df.drop(columns=['Lumi_weight','EventNumber','FJ_flavour'])
 y = df['Lumi_weight'].copy()
 lumi_weights =  df['Lumi_weight'].copy()
 
@@ -28,11 +29,29 @@ y[y<0] = 0
 
 y = np.array(y)
 
+print("Class balance:", np.mean(y))
+print("Positive lumi weight sum:", np.sum(lumi_weights[y == 1]))
+print("Negative lumi weight sum:", np.sum(lumi_weights[y == 0]))
+
+
+print(np.percentile(lumi_weights, [0, 25, 50, 75, 100]))
+
+
 X_train, X_test, y_train, y_test, lumi_train, lumi_test = train_test_split(X, y,lumi_weights, test_size=0.2, random_state=42, stratify = y)
+
+print(np.mean(X_train, axis=0)[:5])
+print(np.std(X_train, axis=0)[:5])
+
 
 scaler = StandardScaler()
 X_train = scaler.fit_transform(X_train)
 X_test = scaler.transform(X_test)
+
+print(np.mean(y_train), np.mean(y_test))
+
+print(np.mean(X_train, axis=0)[:5])
+print(np.std(X_train, axis=0)[:5])
+
 
 X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
 X_test_tensor = torch.tensor(X_test, dtype=torch.float32)

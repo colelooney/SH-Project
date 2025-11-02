@@ -15,7 +15,7 @@ arguments:
 import torch
 from sklearn.metrics import classification_report
 import numpy as np
-from DNN_models.py import DNN
+from DNN_models import DNN
 import joblib
 import argparse
 from datetime import datetime
@@ -23,9 +23,9 @@ from datetime import datetime
 def main(tensor_path, model_path, save_path):
     data_dict = torch.load(tensor_path)
 
-    X_test_tensor = data_dict.X_test
-    y_test_tensor = data_dict.y_test
-    lumi_test_tensor = data_dict.lumi_test
+    X_test_tensor = data_dict['X_test']
+    y_test_tensor = data_dict['y_test']
+    lumi_test_tensor = data_dict['lumi_test']
 
     input_size = X_test_tensor.shape[1]
     model = DNN(input_size)
@@ -34,6 +34,7 @@ def main(tensor_path, model_path, save_path):
     scaler = joblib.load('scaler.joblib')
 
     X_test_tensor = scaler.transform(X_test_tensor) #to accomodate unseen, external test data
+    X_test_tensor = torch.tensor(X_test_tensor, dtype = torch.float32)
 
     model.eval()
     with torch.no_grad():
@@ -46,8 +47,8 @@ def main(tensor_path, model_path, save_path):
         y_true = y_test_tensor.numpy()
         y_pred = predicted_labels.numpy()
 
-        print("\nClassification Report:")
-        print(classification_report(y_true, y_pred, target_names=['Background (Class 0)', 'Signal (Class 1)']))
+    print("\nClassification Report:")
+    print(classification_report(y_true, y_pred, target_names=['Background (Class 0)', 'Signal (Class 1)']))
 
     np.savez(
         save_path,
@@ -64,6 +65,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--tensor_path', type = str, default = '../data/processed/data_tensors.pt', required= False)
     parser.add_argument('--model_path',type=str,required=False,default = 'ModelsDNN/dnn_model.pth')
-    parser.add_argument('--numpy_save_filename', type = str,required=False, default = f'dnn_discriminant_scores_{date}.npz' )
+    parser.add_argument('--numpy_save_filename', type = str,required=False, default = f'../data/dnn_discriminant_scores_{date}.npz' )
     args = parser.parse_args()
     main(tensor_path = args.tensor_path, model_path= args.model_path, save_path = args.numpy_save_filename)
