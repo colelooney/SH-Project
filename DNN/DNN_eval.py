@@ -33,12 +33,13 @@ def main(tensor_path, model_path, save_path):
 
     scaler = joblib.load('scaler.joblib')
 
-    X_test_tensor = scaler.transform(X_test_tensor) #to accomodate unseen, external test data
-    X_test_tensor = torch.tensor(X_test_tensor, dtype = torch.float32)
+    # X_test_tensor = scaler.transform(X_test_tensor) #to accomodate unseen, external test data
+    # X_test_tensor = torch.tensor(X_test_tensor, dtype = torch.float32)
 
     model.eval()
     with torch.no_grad():
-        test_prob = model(X_test_tensor)
+        logit = model(X_test_tensor)
+        test_prob = torch.sigmoid(logit)
         p_plus = test_prob.squeeze() #make 1d
         p_minus = 1 - p_plus
         discriminant_scores = p_plus - p_minus
