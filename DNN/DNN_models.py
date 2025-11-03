@@ -11,7 +11,7 @@ Three layers with 64 hidden dimensions, binary classification
 
 
 import torch.nn as nn
-hidden_dim = 64
+hidden_dim = 128
 output_dim = 1
 
 class DNN(nn.Module):
@@ -22,11 +22,18 @@ class DNN(nn.Module):
         super(DNN, self).__init__()
         self.layers = nn.Sequential(
             nn.Linear(input_size, hidden_dim),
-            nn.ReLU(),
+            nn.BatchNorm1d(hidden_dim),
+            nn.LeakyReLU(0.01),
             nn.Linear(hidden_dim,hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim,output_dim),
-            nn.Sigmoid()
+            nn.BatchNorm1d(hidden_dim),
+            nn.LeakyReLU(0.01),
+            nn.Linear(hidden_dim,hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
+            nn.LeakyReLU(0.01),
+            nn.Linear(hidden_dim,hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
+            nn.LeakyReLU(0.01),
+            nn.Linear(hidden_dim,output_dim)
         )
 
     def forward(self, x):
