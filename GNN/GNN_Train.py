@@ -17,9 +17,11 @@ import torch
 from torch_geometric.data import DataLoader
 import numpy as np
 import argparse
+import os
+from GNN_preprocess import CPDataSet
 
 def main(dict_path,batch_size,hidden_dim,learning_rate,num_epochs):
-    data_dict = torch.load(dict_path)
+    data_dict = torch.load(dict_path, weights_only = False)
 
     train_dataset = data_dict['train_dataset']
     val_dataset = data_dict['val_dataset']
@@ -28,11 +30,11 @@ def main(dict_path,batch_size,hidden_dim,learning_rate,num_epochs):
     print(f"Training set size: {len(train_dataset)}")
     print(f"Validation set size: {len(val_dataset)}")
 
-    train_labels = torch.cat([data.y for data in train_dataset])
-    num_class_0 = (train_labels == 0).sum()
-    num_class_1 = (train_labels == 1).sum()
-    print(f"Number of class 0 in training set: {num_class_0}")
-    print(f"Number of class 1 in training_set: {num_class_1}")
+    # train_labels = torch.cat([data.y for data in train_dataset])
+    # num_class_0 = (train_labels == 0).sum()
+    # num_class_1 = (train_labels == 1).sum()
+    # print(f"Number of class 0 in training set: {num_class_0}")
+    # print(f"Number of class 1 in training_set: {num_class_1}")
 
     train_loader = DataLoader(train_dataset, batch_size = batch_size, shuffle = True)
     dev_loader = DataLoader(val_dataset, batch_size = batch_size, shuffle = False)
@@ -40,7 +42,7 @@ def main(dict_path,batch_size,hidden_dim,learning_rate,num_epochs):
     model = GCN(input_size, hidden_dim)
     early_stopper = EarlyStopper(patience = 2, min_delta = .05)
     optimizer = torch.optim.Adam(model.parameters(), lr = learning_rate, weight_decay = 1e-3)
-    criterion = torch.nn.BCELoss()
+    criterion = torch.nn.BCEWithLogitsLoss()
 
     training_losses = []
     training_epoch = []
@@ -77,6 +79,7 @@ def main(dict_path,batch_size,hidden_dim,learning_rate,num_epochs):
             if early_stopper.early_stop(total_val_loss):
                 break
 
+    os.makedirs('ModelsGNN', exist_ok=True)
     torch.save(model.state_dict(), 'ModelsGNN/gnn_model.pth')
 
     np.savez('../graphdata/training_loss',

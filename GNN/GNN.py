@@ -50,6 +50,29 @@ class GCN(torch.nn.Module):
 
         return x #return probabilities for binary classification
 
+class EarlyStopper:
+    """
+    Class to stop training early
+
+    patience: how many times validation loss can increase before early stopping kicks in
+    min_delta = ignore small increases in val loss
+    """
+    def __init__(self,patience = 1, min_delta = 0):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.counter = 0
+        self.min_validation_loss = float('inf')
+
+    def early_stop(self, validation_loss):
+        if validation_loss < self.min_validation_loss:
+            self.min_validation_loss = validation_loss
+            self.counter = 0
+        elif validation_loss > (self.min_validation_loss + self.min_delta):
+            self.counter += 1
+            if self.counter >= self.patience:
+                return True
+        return False
+
 if __name__ == "__main__":
     print("This file only contains the GCN model definition.")
     print("Please run the GNN_SignalvsBackground.py script to train and evaluate the model.")

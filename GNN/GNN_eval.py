@@ -14,23 +14,24 @@ arguments:
 import torch
 from sklearn.metrics import classification_report
 import numpy as np
-from GNN_models.py import GCN
+from GNN import GCN
 import joblib
 import argparse
 from datetime import datetime
 from sklearn.metrics import accuracy_score,precision_score, recall_score, roc_auc_score
 from torch_geometric.data import DataLoader
+from GNN_preprocess import CPDataSet
 
 def main(dict_path, model_path,batch_size,hidden_dim, save_path):
-    data_dict = torch.load(dict_path)
+    data_dict = torch.load(dict_path,weights_only = False)
 
-    test_dataset = data_dict.test_dataset
+    test_dataset = data_dict['test_dataset']
 
-    input_size = test_dataset.shape[1]
+    input_size = test_dataset[0].x.shape[1]
     model = GCN(input_size,hidden_dim)
     model.load_state_dict(torch.load(model_path))
 
-    criterion = torch.nn.BCELoss()
+    criterion = torch.nn.BCEWithLogitsLoss()
 
     test_loader = DataLoader(test_dataset,batch_size = batch_size, shuffle = False)
 
@@ -48,6 +49,7 @@ def main(dict_path, model_path,batch_size,hidden_dim, save_path):
             loss = criterion(out, batch.y.float().unsqueeze(1))
             total_test_loss += loss.item() * batch.num_graphs
 
+            out = torch.sigmoid(out)
             preds = (out > 0.5).long().squeeze()
 
             all_preds.append(preds.cpu())
