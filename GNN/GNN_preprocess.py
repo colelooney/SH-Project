@@ -25,7 +25,7 @@ from torch_geometric.data import Dataset, Data
 import argparse
 
 class CPDataSet(Dataset):
-    def __init__(self,root, hfivesdir, lepton_only = True, transform = None, pre_transform = None, pre_filter = None):
+    def __init__(self,root, hfivesdir, lepton_only, transform = None, pre_transform = None, pre_filter = None):
         self.event_data = None #store as attribute to access later
         self.feature_names = None
         self.hfivesdir = hfivesdir
@@ -75,6 +75,19 @@ class CPDataSet(Dataset):
 
         isLep_idx = feature_names.index('constituent_isLep')
 
+        print("Computing global mean and std across all valid constituents...")
+
+# collect all valid constituent features
+        all_valid = constant_features[valid_mask]
+        global_mean = all_valid.mean(axis=0)
+        global_std = all_valid.std(axis=0) + 1e-8  # avoid divide by zero
+
+        # save stats for later use in inference
+        np.savez(osp.join(self.processed_dir, 'scaling_stats.npz'),
+                mean=global_mean, std=global_std)
+
+        print(f"Global scaling stats saved to: {osp.join(self.processed_dir, 'scaling_stats.npz')}")
+
         num_events = constant_features.shape[0] #number fo events
         graph_save_idx = 0
         processed_event_data = []
@@ -90,7 +103,8 @@ class CPDataSet(Dataset):
                 continue
 
 
-            node_feats = self.__get_node_features(valid_nodes) #get node features tensor
+            scaled_nodes = (valid_nodes - global_mean) / global_std
+            node_feats = self.__get_node_features(scaled_nodes) #get node feats scaled
             edge_index = self.__get_edge_index(valid_nodes=valid_nodes.shape[0]) #get edge index tensor
             label = self._get_labels(i, event_data_local) #get label tensor
             lumi_weight_tensor = torch.tensor([event_data_local['Lumi_weight'].iloc[i]],dtype = torch.float)
@@ -106,6 +120,7 @@ class CPDataSet(Dataset):
 
             if (i + 1) % 5000 == 0:
                 print(f'Processed {i+1}/{num_events} events.')
+
 
         final_event_df = pd.DataFrame(processed_event_data)
         print(f"\nProcessing complete. Created {len(final_event_df)} valid graphs.")
@@ -140,8 +155,8 @@ class CPDataSet(Dataset):
             data.feature_names = self.feature_names
         return data
     
-def data_splitter(graphsdir,test_size,save_path):
-    dataset = CPDataSet(root = graphsdir)
+def data_splitter(graphsdir,test_size,save_path,hfivesdir):
+    dataset = CPDataSet(root = graphsdir, hfivesdir=hfivesdir)
 
     torch.manual_seed(12345)
     dataset = dataset.shuffle()
@@ -188,5 +203,6 @@ if __name__ == '__main__':
     print(f'\nsplitting datasets with test size {args.test_size}')
     data_splitter(graphsdir=args.graphdir,
                   test_size=args.test_size,
-                  save_path=args.save_path)
+                  save_path=args.save_path,
+                  hfivesdir=args.hfivesdir)
     print('\nGraph data processing complete')
