@@ -62,9 +62,9 @@ class CPDataSet(Dataset):
         torch.save(event_data_local, self.processed_paths[1]) #save event data info for later use in label
 
         num_features = len(raw_constituents.dtype.names)
-        constant_features = raw_constituents.view(np.float32).reshape(
-            raw_constituents.shape[0], raw_constituents.shape[1], num_features
-        )
+        constant_features = np.stack(
+            [raw_constituents[name] for name in raw_constituents.dtype.names], axis=-1
+            )   
 
         feature_names = list(raw_constituents.dtype.names)
 
@@ -95,7 +95,10 @@ class CPDataSet(Dataset):
             label = self._get_labels(i, event_data_local) #get label tensor
             lumi_weight_tensor = torch.tensor([event_data_local['Lumi_weight'].iloc[i]],dtype = torch.float)
 
-            data = Data(x = node_feats, edge_index = edge_index, y = label, lumi_weight = lumi_weight_tensor) #create PyG Data object
+            data = Data(x = node_feats,
+                        edge_index = edge_index,
+                        y = torch.tensor([label], dtype=torch.float), 
+                        lumi_weight = torch.tensor([lumi_weight_tensor], dtype=torch.float)) #create PyG Data object
 
             torch.save(data, osp.join(self.processed_dir, f'data_{graph_save_idx}.pt')) #save graph data object
             processed_event_data.append(df_1d.iloc[i])
