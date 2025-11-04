@@ -10,7 +10,7 @@ import numpy as np
 
 def main():
     dataset = CPDataSet(root = '../graphdata/CP_Studies_llqq_graphs_20th_October_Linear')
-    dataset = CPDataSet(root = '../graphdata/CP_Studies_llqq_graphs_29th_September')
+    # dataset = CPDataSet(root = '../graphdata/CP_Studies_llqq_graphs_29th_September')
     # test_dataset = CPDataSet(root = '../graphdata/CP_Studies_llqq_graphs_20th_October_Quadratic')
     torch.manual_seed(12345)
     dataset = dataset.shuffle()
@@ -20,8 +20,10 @@ def main():
 
     train_dataset = dataset[:split_idx]
     test_val_dataset = dataset[split_idx:] #have val be on linear term
-    val_dataset = test_val_dataset[:4000]
-    test_dataset= test_val_dataset[4000:]
+
+    test_split = int(0.5*len(test_val_dataset))
+    val_dataset = test_val_dataset[:test_split]
+    test_dataset= test_val_dataset[test_split:]
 
     # #test to see if model can overfit, i.e. see if model is defined correctly and data processing correctly
     # train_dataset=  dataset[:100]
@@ -37,13 +39,48 @@ def main():
     print(f"Validation set size: {len(val_dataset)}")
     print(f"Testing set size: {len(test_dataset)}")
 
-    train_labels = torch.cat([data.y for data in train_dataset])
-    print(train_labels)
-    num_class_0 = (train_labels == 0).sum()
-    num_class_1 = (train_labels == 1).sum()
-    print(f"Number of class 0 in training set: {num_class_0}")
-    print(f"Number of class 1 in training_set: {num_class_1}")
+    # train_labels = torch.cat([data.y for data in train_dataset])
+    # print(train_labels)
+    # num_class_0 = (train_labels == 0).sum()
+    # num_class_1 = (train_labels == 1).sum()
+    # print(f"Number of class 0 in training set: {num_class_0}")
+    # print(f"Number of class 1 in training_set: {num_class_1}")
 
+    all_x = torch.cat([data.x for data in train_dataset], dim=0)
+    print("\n[Input Feature Statistics]")
+    print("Mean of features (first 5):", all_x.mean(dim=0)[:5])
+    print("Std of features (first 5):", all_x.std(dim=0)[:5])
+    print("Global feature variance:", all_x.var().mean().item())
+
+    print("\n[Graph Connectivity Check]")
+    num_nodes = [data.num_nodes for data in train_dataset]
+    num_edges = [data.edge_index.size(1) for data in train_dataset]
+    print("Avg nodes per graph:", sum(num_nodes)/len(num_nodes))
+    print("Avg edges per graph:", sum(num_edges)/len(num_edges))
+    print("Avg edges per node:", (sum(num_edges)/sum(num_nodes)))
+
+    hidden_dim = 128
+    learning_rate = 0.0001
+    
+    print("\n[Overfit Test on Tiny Subset]")
+    small_train = dataset[:50]
+    loader = DataLoader(small_train, batch_size=10, shuffle=True)
+
+    model = GCN(input_size, hidden_dim)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    criterion = torch.nn.BCEWithLogitsLoss()
+
+    for epoch in range(300):
+        total_loss = 0
+        for batch in loader:
+            optimizer.zero_grad()
+            logits = model(batch.x, batch.edge_index, batch.batch)
+            loss = criterion(logits, batch.y.float().unsqueeze(1))
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item() * batch.num_graphs
+        if epoch % 50 == 0:
+            print(f"Epoch {epoch:3d}: loss={total_loss/len(small_train):.4f}")
 
 
 
@@ -59,9 +96,12 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), lr = learning_rate, weight_decay = 1e-3)
     criterion = torch.nn.BCEWithLogitsLoss()
 
-    num_epochs = 20
+    num_epochs = 10
     training_losses = []
     training_epoch = []
+
+    # train_labels = torch.cat([d.y for d in train_dataset])
+    # print("Train class 0/1 counts:", (train_labels==0).sum().item(), (train_labels==1).sum().item())
 
     for epoch in range(num_epochs):
         model.train()
@@ -76,6 +116,13 @@ def main():
 
             optimizer.step()
             total_loss += loss.item() * batch.num_graphs
+        
+        if epoch % 1 == 0:  # or every few epochs
+            with torch.no_grad():
+                sample_batch = next(iter(train_loader))
+                sample_logits = model(sample_batch.x, sample_batch.edge_index, sample_batch.batch)
+                print(f"[Epoch {epoch}] Logit mean: {sample_logits.mean().item():.4f}, var: {sample_logits.var().item():.6f}")
+
 
         avg_loss = total_loss / len(train_dataset)
         training_losses.append(avg_loss)
@@ -88,6 +135,42 @@ def main():
              training_loss = np.array(training_losses),
              epoch = np.array(training_epoch)
              )
+    
+    for batch in train_loader:
+        single = batch
+        break
+
+    model.train()
+    optimizer.zero_grad()
+    logits = model(single.x, single.edge_index, single.batch)      # shape (batch_size, 1)
+    probs = torch.sigmoid(logits)
+    print("logits mean/min/max:", logits.mean().item(), logits.min().item(), logits.max().item())
+    print("probs mean/min/max:", probs.mean().item(), probs.min().item(), probs.max().item())
+    print("labels unique:", torch.unique(single.y))
+
+    loss = criterion(logits, single.y.float().unsqueeze(1))
+    loss.backward()
+    grad_norm = 0.0
+    for p in model.parameters():
+        if p.grad is not None:
+            grad_norm += p.grad.data.norm(2).item()**2
+    print("grad norm sqrt:", grad_norm**0.5)
+
+    small = train_dataset[:64]
+    loader = DataLoader(small, batch_size=16, shuffle=True)
+    model = GCN(input_size, hidden_dim).train()
+    opt = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=0)
+    for epoch in range(300):
+        total = 0
+        for b in loader:
+            opt.zero_grad()
+            logits = model(b.x, b.edge_index, b.batch)
+            loss = torch.nn.BCEWithLogitsLoss()(logits, b.y.float().unsqueeze(1))
+            loss.backward()
+            opt.step()
+            total += loss.item()*b.num_graphs
+        if epoch % 50==0:
+            print(epoch, total/len(small))
 
     model.eval()
     total_dev_loss = 0 

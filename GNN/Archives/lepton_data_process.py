@@ -1,29 +1,36 @@
+"""
+Processes 2d data into PyG Data objects using only leptonic constituents. 
+Includes a global edge index rather than KNN approach from before
+
+"""
+
+
 import h5py
 import numpy as np
 import pandas as pd
 import torch
 import os.path as osp
 from torch_geometric.data import Dataset, Data
-from sklearn.neighbors import kneighbors_graph
+import argparse
 
-hfivesdir = '../data/new_Input_CP_Studies_llqq_LinearTerm_29_September2025.h5'
-graphsdir = "../graphdata/CP_Studies_llqq_graphs_29th_September"
+hfivesdir = '../data/s2286706/new_Input_CP_Studies_llqq_QuadraticTerm_20th_October2025.h5'
+graphsdir = "../graphdata/CP_Studies_llqq_graphs_20th_October_Quadratic"
 
 class CPDataSet(Dataset):
-    def __init__(self,root, transform = None, pre_transform = None, pre_filter = None):
+    def __init__(self,root, hfivesdir, transform = None, pre_transform = None, pre_filter = None):
         self.event_data = None #store as attribute to access later
         self.feature_names = None
+        self.hfivesdir = hfivesdir
         super().__init__(root,transform,pre_transform,pre_filter) #calls process if data not processed
 
         if osp.exists(self.processed_paths[1]): #load event data info if it exists
             self.event_data = torch.load(self.processed_paths[1], weights_only = False)
         if osp.exists(self.processed_paths[2]):
             self.feature_names = torch.load(self.processed_paths[2], weights_only = False)
-
     
     @property
     def raw_file_names(self):
-        return [osp.basename(hfivesdir)]
+        return [osp.basename(self.hfivesdir)]
     
     @property
     def processed_file_names(self):
@@ -35,7 +42,7 @@ class CPDataSet(Dataset):
 
     def process(self):
         # load raw data
-        with h5py.File(hfivesdir, 'r') as f:
+        with h5py.File(self.hfivesdir, 'r') as f:
             df_1d = pd.DataFrame(f['LargeRJet']['1d'][:])
             df_1d['lumi_label'] = 0 #initialize new column for labels
             df_1d.loc[df_1d['Lumi_weight'] > 0, 'lumi_label'] = 1 #label 1 for signal
@@ -57,59 +64,59 @@ class CPDataSet(Dataset):
         valid_mask = constant_features[:,:,feature_names.index('constituent_pt')] > 0 #mask for valid constituents based on pT > 0
         constant_features = np.nan_to_num(constant_features, nan=0.0) #fill NaNs with 0
 
+        isLep_idx = feature_names.index('constituent_isLep')
+
         num_events = constant_features.shape[0] #number fo events
+        graph_save_idx = 0
+        processed_event_data = []
         for i in range(num_events):
             mask = valid_mask[i] #mask for valid constituents in event i
             valid_nodes = constant_features[i,mask,:] #get valid constituents for event i
+            lepton_mask_for_event = valid_nodes[:, isLep_idx] == 1
+            lepton_nodes = valid_nodes[lepton_mask_for_event]
 
-            if valid_nodes.shape[0] < 2:
+            if lepton_nodes.shape[0] < 2: #skip if not enough nodes to create an edge
                 continue
 
 
-            node_feats = self.__get_node_features(valid_nodes) #get node features tensor
-            edge_index = self.__get_edge_index(valid_nodes,feature_names) #get edge index tensor
+            node_feats = self.__get_node_features(lepton_nodes) #get node features tensor
+            edge_index = self.__get_edge_index(valid_nodes=lepton_nodes.shape[0]) #get edge index tensor
             label = self._get_labels(i, event_data_local) #get label tensor
             lumi_weight_tensor = torch.tensor([event_data_local['Lumi_weight'].iloc[i]],dtype = torch.float)
 
             data = Data(x = node_feats, edge_index = edge_index, y = label, lumi_weight = lumi_weight_tensor) #create PyG Data object
 
-            torch.save(data, osp.join(self.processed_dir, f'data_{i}.pt')) #save graph data object
+            torch.save(data, osp.join(self.processed_dir, f'data_{graph_save_idx}.pt')) #save graph data object
+            processed_event_data.append(df_1d.iloc[i])
+            graph_save_idx += 1
 
             if (i + 1) % 5000 == 0:
                 print(f'Processed {i+1}/{num_events} events.')
-    
+
+        final_event_df = pd.DataFrame(processed_event_data)
+        print(f"\nProcessing complete. Created {len(final_event_df)} valid graphs.")
+        print("Saving filtered event-level information...")
+        torch.save(final_event_df, self.processed_paths[1])
 
     def __get_node_features(self, valid_nodes):
-        return torch.tensor(valid_nodes, dtype = torch.float) #all features for now
+        valid_nodes = np.nan_to_num(valid_nodes, nan=0.0)
+        stds = valid_nodes.std(axis=0)
+        means = valid_nodes.mean(axis=0)
+        stds[stds == 0] = 1.0  # avoid div by zero
+        norm_nodes = (valid_nodes - means) / stds
+        return torch.tensor(norm_nodes, dtype=torch.float)
+
     
-    def __get_edge_index(self, valid_nodes, feature_names, k_neighbors = 6):
-        # use eta and phi to construct k-NN graph
-        eta_idx = feature_names.index('constituent_eta')
-        phi_idx = feature_names.index('constituent_phi')
+    def __get_edge_index(self, num_nodes):
+        # connect all nodes => fully connected graph
+        i = torch.arange(num_nodes, dtype=torch.long)
+        j = torch.arange(num_nodes, dtype=torch.long)
 
-        eta_phi_coords = valid_nodes[:, [eta_idx, phi_idx]] #extract eta and phi
+        i,j = torch.cartesian_prod(i,j).t()
 
-        num_constituents = valid_nodes.shape[0] #number of valid constituents
-
-        if num_constituents < 2:
-            return torch.tensor([], dtype=torch.long).reshape(2, 0)
-            
-        actual_k = min(k_neighbors, num_constituents  - 1) #adjust k if fewer constituents
-
-        #create k-NN graph using sklearn
-        adjacency_matrix = kneighbors_graph(
-            eta_phi_coords, 
-            n_neighbors=actual_k, 
-            mode='connectivity', 
-            include_self=False
-        )
-
-        # convert to edge index format
-        edge_index_sparse = adjacency_matrix.tocoo()
-        return torch.tensor(
-            np.array([edge_index_sparse.row, edge_index_sparse.col]), 
-            dtype=torch.long
-        )
+        mask = i !=j
+        edge_index = torch.stack([i[mask],j[mask]],dim=0)
+        return edge_index
 
     def _get_labels(self, i,event_data_df): #get label for event i
         label_val = event_data_df['lumi_label'].iloc[i]
@@ -125,7 +132,8 @@ class CPDataSet(Dataset):
         return data
     
 if __name__ == '__main__':
-    dataset = CPDataSet(root = graphsdir) #initialize and process dataset if needed
+    
+    dataset = CPDataSet(root = graphsdir, hfivesdir=hfivesdir) #initialize and process dataset if needed
 
     print(f"\nDataset loaded successfully!")
     print(f"Number of graphs: {len(dataset)}") #number of events with valid graphs
