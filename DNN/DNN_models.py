@@ -6,7 +6,7 @@ DNN_models.py
 Define Deep Neural Network Model and Early Stopper
 
 Arch:
-Three layers with 64 hidden dimensions, binary classification
+Four layers with 128 hidden dimensions, binary classification
 """
 
 
