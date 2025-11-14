@@ -40,7 +40,7 @@ def main(dict_path,batch_size,hidden_dim,learning_rate,num_epochs):
     dev_loader = DataLoader(val_dataset, batch_size = batch_size, shuffle = False)
 
     model = GCN(input_size, hidden_dim)
-    early_stopper = EarlyStopper(patience = 2, min_delta = .05)
+    early_stopper = EarlyStopper(patience = 10, min_delta = 1e-4)
     optimizer = torch.optim.Adam(model.parameters(), lr = learning_rate, weight_decay = 1e-3)
     criterion = torch.nn.BCEWithLogitsLoss()
 
@@ -80,7 +80,7 @@ def main(dict_path,batch_size,hidden_dim,learning_rate,num_epochs):
                 break
 
     os.makedirs('ModelsGNN', exist_ok=True)
-    torch.save(model.state_dict(), 'ModelsGNN/gnn_model.pth')
+    torch.save(model.state_dict(), 'ModelsGNN/gnn_model_res.pth')
 
     np.savez('../graphdata/training_loss',
              training_loss = np.array(training_losses),
@@ -92,9 +92,9 @@ def main(dict_path,batch_size,hidden_dim,learning_rate,num_epochs):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--dict_path',type=str,default='../graphdata/dataset_dict.pt',required=False)
-    parser.add_argument('--hidden_dim',type=int,default=128,required=False)
+    parser.add_argument('--hidden_dim',type=int,default=256,required=False)
     parser.add_argument('--batch_size',default = 128, type = int, required = False)
-    parser.add_argument('--learning_rate',type=float,default=0.005,required=False)
+    parser.add_argument('--learning_rate',type=float,default=1e-4,required=False)
     parser.add_argument('--num_epochs',type=int,default=20,required=False)
     args = parser.parse_args()
     main(dict_path=args.dict_path,

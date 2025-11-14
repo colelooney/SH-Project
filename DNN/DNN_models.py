@@ -11,8 +11,9 @@ Four layers with 128 hidden dimensions, binary classification
 
 
 import torch.nn as nn
-hidden_dim = 128
+hidden_dim = 512
 output_dim = 1
+dropout_rate = 0.2
 
 class DNN(nn.Module):
     """
@@ -23,17 +24,25 @@ class DNN(nn.Module):
         self.layers = nn.Sequential(
             nn.Linear(input_size, hidden_dim),
             nn.BatchNorm1d(hidden_dim),
-            nn.LeakyReLU(0.01),
-            nn.Linear(hidden_dim,hidden_dim),
-            nn.BatchNorm1d(hidden_dim),
-            nn.LeakyReLU(0.01),
-            nn.Linear(hidden_dim,hidden_dim),
-            nn.BatchNorm1d(hidden_dim),
-            nn.LeakyReLU(0.01),
-            nn.Linear(hidden_dim,hidden_dim),
-            nn.BatchNorm1d(hidden_dim),
-            nn.LeakyReLU(0.01),
-            nn.Linear(hidden_dim,output_dim)
+            nn.ReLU(),
+            # nn.Dropout(dropout_rate),
+            nn.Identity(),
+            nn.Linear(hidden_dim,hidden_dim//2),
+            nn.BatchNorm1d(hidden_dim//2),
+            nn.ReLU(),
+            # nn.Dropout(dropout_rate),
+            nn.Identity(),
+            nn.Linear(hidden_dim//2,hidden_dim//4),
+            nn.BatchNorm1d(hidden_dim//4),
+            nn.ReLU(),
+            # nn.Dropout(dropout_rate),
+            nn.Identity(),
+            nn.Linear(hidden_dim//4,hidden_dim//8),
+            nn.BatchNorm1d(hidden_dim//8),
+            nn.ReLU(),
+            # nn.Dropout(dropout_rate),
+            nn.Identity(),
+            nn.Linear(hidden_dim//8,output_dim)
         )
 
     def forward(self, x):
@@ -46,7 +55,7 @@ class EarlyStopper:
     patience: how many times validation loss can increase before early stopping kicks in
     min_delta = ignore small increases in val loss
     """
-    def __init__(self,patience = 1, min_delta = 0):
+    def __init__(self,patience = 5, min_delta = 1e-4):
         self.patience = patience
         self.min_delta = min_delta
         self.counter = 0
@@ -61,3 +70,25 @@ class EarlyStopper:
             if self.counter >= self.patience:
                 return True
         return False
+
+class EarlyStopperAUC:
+    """
+    Class to stop training early based on ROC_AUC score
+
+    patience: how many times ROC AUC can decrease before early stopping kicks in
+    min_delta = ignore small decrease in roc
+    """
+    def __init__(self,patience = 5, min_delta = 1e-4):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.counter = 0
+        self.best_auc = -float('inf')
+
+    def early_stop(self, auc):
+        if auc > self.best_auc + self.min_delta:
+            self.best_auc = auc
+            self.counter = 0
+            return False
+        else:
+            self.counter += 1
+            return self.counter >= self.patience

@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-data = np.load('../graphdata/gnn_test_results_module.npz')
+data = np.load('../graphdata/gnn_res_test.npz')
 discriminant_scores = data['discriminant_scores']
 Lumi_weights = data['lumi_weights']
 
@@ -22,7 +22,7 @@ def main():
     plt.ylabel('Weighted Event Count')
     plt.xlim(-1,1)
     plt.grid(False)
-    plt.savefig('../plots/GNN_Discriminant_vs_LumiWeight_validation_20th_October_Module.png')
+    plt.savefig('../plots/GNN_Discriminant_vs_LumiWeight_validation_13th_October_res.png')
     plt.show()
 
     #create test histogram

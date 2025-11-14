@@ -37,11 +37,11 @@ def objective(trial, tensor_path):
     )
 
     # ---- Sample hyperparameters ----
-    hidden_dim = trial.suggest_categorical("hidden_dim", [64, 128, 256, 512])
-    num_layers = trial.suggest_int("num_layers", 2, 8)
-    lr = trial.suggest_loguniform("lr", 1e-5, 1e-2)
-    batch_size = trial.suggest_categorical("batch_size", [64, 128, 256, 512])
-    dropout_rate = trial.suggest_float("dropout_rate", 0.0, 0.5)
+    hidden_dim = trial.suggest_categorical("hidden_dim", [64, 128])
+    # num_layers = trial.suggest_int("num_layers", 2, 8)
+    lr = trial.suggest_loguniform("lr", 0.9e-4, 1.1e-4)
+    # batch_size = trial.suggest_categorical("batch_size", [64, 128, 256, 512])
+    dropout_rate = trial.suggest_float("dropout_rate", 0.0, 0.2)
     activation_name = trial.suggest_categorical("activation", ["LeakyReLU", "ReLU"])
 
     # ---- Define model dynamically ----
@@ -49,8 +49,9 @@ def objective(trial, tensor_path):
     input_size = X.shape[1]
     current_size = input_size
     act_fn = nn.LeakyReLU(0.01) if activation_name == "LeakyReLU" else nn.ReLU()
+    batch_size = 128
 
-    for _ in range(num_layers):
+    for _ in range(4):
         layers.append(nn.Linear(current_size, hidden_dim))
         layers.append(nn.BatchNorm1d(hidden_dim))
         layers.append(act_fn)
@@ -68,7 +69,7 @@ def objective(trial, tensor_path):
 
     # ---- Training Loop ----
     model.train()
-    for epoch in range(15):  # keep short for tuning speed
+    for epoch in range(10):  # keep short for tuning speed
         for xb, yb in train_loader:
             optimizer.zero_grad()
             outputs = model(xb)
@@ -125,7 +126,7 @@ def main(tensor_path, n_trials, study_name):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--tensor_path", type=str, default="../data/processed/data_tensors_evenval.pt")
-    parser.add_argument("--n_trials", type=int, default=30)
+    parser.add_argument("--n_trials", type=int, default=20)
     parser.add_argument("--study_name", type=str, default="dnn_hyperparam_opt")
     args = parser.parse_args()
 

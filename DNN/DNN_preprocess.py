@@ -27,6 +27,9 @@ def main(input_path, save_path, train_type):
     with h5py.File(input_path) as f:
         df = pd.DataFrame(f['LargeRJet']['1d'][:])
 
+    features_to_drop = ['EventNumber', 'FJ_flavour', 'Lumi_weight','Type']
+
+    
     if train_type == 'Even':
         train_dev = df[df['EventNumber'] % 2 ==0]
         split_idx = int(0.8*len(train_dev))
@@ -36,67 +39,67 @@ def main(input_path, save_path, train_type):
         test = df[df['EventNumber'] % 2 == 1]
 
         lumi_train =  train['Lumi_weight'].copy()
-        # lumi_val = dev['Lumi_weight'].copy()
+        # lumi_val = val['Lumi_weight'].copy()
         lumi_test = test['Lumi_weight'].copy()
 
         y_train = train['Lumi_weight'].copy()
-        X_train = train.drop(columns=['Lumi_weight','EventNumber','FJ_flavour'])
+        X_train = train.drop(columns=features_to_drop)
 
-        # y_val = dev['Lumi_weight'].copy()
-        # X_val = dev.drop(columns=['Lumi_weight','EventNumber','FJ_flavour'])
+        # y_val = val['Lumi_weight'].copy()
+        # X_val = val.drop(columns=['Lumi_weight','EventNumber','FJ_flavour'])
 
         y_test = test['Lumi_weight'].copy()
-        X_test = test.drop(columns=['Lumi_weight','EventNumber','FJ_flavour'])
+        X_test = test.drop(columns=features_to_drop)
 
         y_train[y_train>0] = 1
         y_train[y_train<0] = 0
 
-        # y_dev[y_dev>0] = 1
-        # y_dev[y_dev<0] = 0
+        # y_val[y_val>0] = 1
+        # y_val[y_val<0] = 0
 
         y_test[y_test>0] = 1
         y_test[y_test<0] = 0
 
         y_train = np.array(y_train)
-        # y_dev = np.array(y_dev)
+        # y_val = np.array(y_val)
         y_test = np.array(y_test)
 
     elif train_type == 'Odd':
         train_dev = df[df['EventNumber'] % 2 ==1]
-        split_idx = int(0.8*len(train_dev))
+        # split_idx = int(0.8*len(train_dev))
         # val = train_dev[split_idx:]
         # train = train_dev[:split_idx]
         train = train_dev
         test = df[df['EventNumber'] % 2 == 0]
 
         lumi_train =  train['Lumi_weight'].copy()
-        # lumi_val = dev['Lumi_weight'].copy()
+        # lumi_val = val['Lumi_weight'].copy()
         lumi_test = test['Lumi_weight'].copy()
 
         y_train = train['Lumi_weight'].copy()
-        X_train = train.drop(columns=['Lumi_weight','EventNumber','FJ_flavour'])
+        X_train = train.drop(columns=features_to_drop)
 
-        # y_val = dev['Lumi_weight'].copy()
-        # X_val = dev.drop(columns=['Lumi_weight','EventNumber','FJ_flavour'])
+        # y_val = val['Lumi_weight'].copy()
+        # X_val = val.drop(columns=features_to_drop)
 
         y_test = test['Lumi_weight'].copy()
-        X_test = test.drop(columns=['Lumi_weight','EventNumber','FJ_flavour'])
+        X_test = test.drop(columns=features_to_drop)
 
         y_train[y_train>0] = 1
         y_train[y_train<0] = 0
 
-        # y_dev[y_dev>0] = 1
-        # y_dev[y_dev<0] = 0
+        # y_val[y_val>0] = 1
+        # y_val[y_val<0] = 0
 
         y_test[y_test>0] = 1
         y_test[y_test<0] = 0
 
         y_train = np.array(y_train)
-        # y_dev = np.array(y_dev)
+        # y_val = np.array(y_val)
         y_test = np.array(y_test)
 
     elif train_type == 'Random':
-        X = df.drop(columns=['Lumi_weight'])
+        X = df.drop(columns=features_to_drop)
         y = df['Lumi_weight'].copy()
         lumi_weights =  df['Lumi_weight'].copy()
 
@@ -123,7 +126,7 @@ def main(input_path, save_path, train_type):
     X_test_tensor = torch.tensor(X_test, dtype=torch.float32)
 
     y_train_tensor = torch.tensor(y_train, dtype=torch.long)
-    # y_val_tensor=torch.tensor(y_val.to_numpy(), dtype=torch.long)
+    # y_val_tensor=torch.tensor(y_val, dtype=torch.long)
     y_test_tensor = torch.tensor(y_test, dtype=torch.long)
 
     lumi_train_tensor=torch.tensor(lumi_train.to_numpy(), dtype=torch.float32)

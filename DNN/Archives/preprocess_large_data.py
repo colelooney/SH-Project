@@ -20,6 +20,8 @@ relative_path = '../../data/s2286706/new_Input_CP_Studies_llqq_LinearTerm_20th_O
 with h5py.File(relative_path) as f:
     df = pd.DataFrame(f['LargeRJet']['1d'][:])
 
+features_to_drop = ['EventNumber', 'FJ_flavour', 'Lumi_weight','Type']
+
 train_dev = df[df['EventNumber'] % 2 ==0] # train on even event numbers
 split_idx = int(0.8*len(train_dev))
 # train = train_dev[:split_idx]
@@ -34,13 +36,13 @@ lumi_train =  train['Lumi_weight'].copy()
 lumi_test = test['Lumi_weight'].copy()
 
 y_train = train['Lumi_weight'].copy()
-X_train = train.drop(columns=['Lumi_weight','EventNumber','FJ_flavour'])
+X_train = train.drop(columns=features_to_drop)
 
 # y_dev = dev['Lumi_weight'].copy()
 # X_dev = dev.drop(columns=['Lumi_weight','EventNumber','FJ_flavour'])
 
 y_test = test['Lumi_weight'].copy()
-X_test = test.drop(columns=['Lumi_weight','EventNumber','FJ_flavour'])
+X_test = test.drop(columns=features_to_drop)
 
 y_train[y_train>0] = 1
 y_train[y_train<0] = 0
@@ -77,9 +79,19 @@ quadratic_path = '../../data/s2286706/new_Input_CP_Studies_llqq_QuadraticTerm_20
 with h5py.File(quadratic_path) as f:
     df = pd.DataFrame(f['LargeRJet']['1d'][:])
 
+
+
+# features_to_drop = ['EventNumber', 'FJ_flavour', 'Lumi_weight','FJ_eta','LeadingSubJet_Phi',
+#                     'FJ_pT','NegLep_E','LeadingSubJet_E','LeadingSubJet_Eta','PosLep_Eta',
+#                     'SubLeadingSubJet_E','SubLeadingSubJet_Phi','PosLep_pT','PosLep_Phi','Type',
+#                     'SubLeadingSubJet_pT','Vlep_E','Vlep_eta','Vlep_pT','Vlep_mass','cosThetaStar',
+#                     'costheta2']
+
+features_to_drop = ['EventNumber', 'FJ_flavour', 'Lumi_weight','Type']
+
 quad_test = df
 quad_lumi = quad_test['Lumi_weight'].copy()
-quad_train = quad_test.drop(columns= ['Lumi_weight','EventNumber','FJ_flavour'])
+quad_train = quad_test.drop(columns= features_to_drop)
 
 quad_train = scaler.transform(quad_train)
 

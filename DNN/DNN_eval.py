@@ -13,12 +13,13 @@ arguments:
 
 
 import torch
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, roc_auc_score,roc_curve, confusion_matrix
 import numpy as np
 from DNN_models import DNN
 import joblib
 import argparse
 from datetime import datetime
+
 
 def main(tensor_path, model_path, save_path):
     data_dict = torch.load(tensor_path)
@@ -48,15 +49,28 @@ def main(tensor_path, model_path, save_path):
         y_true = y_test_tensor.numpy()
         y_pred = predicted_labels.numpy()
 
+        roc_auc = roc_auc_score(y_true, p_plus)
+
     print("\nClassification Report:")
     print(classification_report(y_true, y_pred, target_names=['Background (Class 0)', 'Signal (Class 1)']))
 
+    print(f'Roc_Auc Score: {roc_auc}')
+
+    # Compute ROC and confusion matrix
+    fpr, tpr, thresholds = roc_curve(y_true, p_plus)
+    cm = confusion_matrix(y_true, predicted_labels)
+
     np.savez(
         save_path,
-        discriminant_scores = discriminant_scores.numpy(),
-        Lumi_weights = lumi_test_tensor.numpy(),
-        y_true = y_true,
-        y_pred = y_pred
+        discriminant_scores=discriminant_scores.numpy(),
+        Lumi_weights=lumi_test_tensor.numpy(),
+        y_true=y_true,
+        y_pred=predicted_labels,
+        fpr=fpr,
+        tpr=tpr,
+        thresholds=thresholds,
+        confusion_matrix=cm,
+        roc_auc=roc_auc
     )
 
 

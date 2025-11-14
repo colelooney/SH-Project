@@ -23,6 +23,7 @@ import torch
 import os.path as osp
 from torch_geometric.data import Dataset, Data
 import argparse
+from sklearn.neighbors import kneighbors_graph
 
 class CPDataSet(Dataset):
     def __init__(self,root, hfivesdir, lepton_only, transform = None, pre_transform = None, pre_filter = None):
@@ -67,6 +68,7 @@ class CPDataSet(Dataset):
             )   
 
         feature_names = list(raw_constituents.dtype.names)
+        self.feature_names = feature_names
 
         torch.save(feature_names,self.processed_paths[2])
 
@@ -102,17 +104,16 @@ class CPDataSet(Dataset):
             if valid_nodes.shape[0] < 2: #skip if not enough nodes to create an edge
                 continue
 
-
             scaled_nodes = (valid_nodes - global_mean) / global_std
             node_feats = self.__get_node_features(scaled_nodes) #get node feats scaled
-            edge_index = self.__get_edge_index(valid_nodes=valid_nodes.shape[0]) #get edge index tensor
+            edge_index = self.__get_edge_index(valid_nodes=valid_nodes,feature_names=self.feature_names,k_neighbors=6) #get edge index tensor
             label = self._get_labels(i, event_data_local) #get label tensor
             lumi_weight_tensor = torch.tensor([event_data_local['Lumi_weight'].iloc[i]],dtype = torch.float)
 
             data = Data(x = node_feats,
                         edge_index = edge_index,
                         y = torch.tensor([label], dtype=torch.float), 
-                        lumi_weight = torch.tensor([lumi_weight_tensor], dtype=torch.float)) #create PyG Data object
+                        lumi_weight = lumi_weight_tensor)
 
             torch.save(data, osp.join(self.processed_dir, f'data_{graph_save_idx}.pt')) #save graph data object
             processed_event_data.append(df_1d.iloc[i])
@@ -130,17 +131,47 @@ class CPDataSet(Dataset):
     def __get_node_features(self, valid_nodes):
         return torch.tensor(valid_nodes, dtype = torch.float) #all features for now
     
-    def __get_edge_index(self, valid_nodes):
-        # connect all nodes => fully connected graph
-        #Since only two leptons decay will always be [1,0] and [0,1]
-        i = torch.arange(valid_nodes, dtype=torch.long)
-        j = torch.arange(valid_nodes, dtype=torch.long)
+    # def __get_edge_index(self, valid_nodes):
+    #     # connect all nodes => fully connected graph
+    #     #Since only two leptons decay will always be [1,0] and [0,1]
+    #     i = torch.arange(valid_nodes, dtype=torch.long)
+    #     j = torch.arange(valid_nodes, dtype=torch.long)
 
-        i,j = torch.cartesian_prod(i,j).t()
+    #     i,j = torch.cartesian_prod(i,j).t()
 
-        mask = i !=j
-        edge_index = torch.stack([i[mask],j[mask]],dim=0)
-        return edge_index
+    #     mask = i !=j
+    #     edge_index = torch.stack([i[mask],j[mask]],dim=0)
+    #     return edge_index
+
+    def __get_edge_index(self,valid_nodes,feature_names,k_neighbors = 6):
+        # KNN edge index approach
+        eta_idx = feature_names.index('constituent_eta')
+        phi_idx = feature_names.index('constituent_phi')
+
+        eta_phi_coords = valid_nodes[:, [eta_idx, phi_idx]] #extract eta and phi
+
+        num_constituents = valid_nodes.shape[0] #number of valid constituents
+
+        if num_constituents < 2:
+            return torch.tensor([], dtype=torch.long).reshape(2, 0)
+            
+        actual_k = min(k_neighbors, num_constituents  - 1) #adjust k if fewer constituents
+
+        #create k-NN graph using sklearn
+        adjacency_matrix = kneighbors_graph(
+            eta_phi_coords, 
+            n_neighbors=actual_k, 
+            mode='connectivity', 
+            include_self=False
+        )
+
+        # convert to bidirectional edge index format
+        edge_index_sparse = adjacency_matrix.tocoo()
+        rows = np.concatenate([edge_index_sparse.row, edge_index_sparse.col])
+        cols = np.concatenate([edge_index_sparse.col, edge_index_sparse.row])
+
+        edge_index = np.array([rows, cols])
+        return torch.tensor(edge_index, dtype=torch.long)
 
     def _get_labels(self, i,event_data_df): #get label for event i
         label_val = event_data_df['lumi_label'].iloc[i]
@@ -155,8 +186,8 @@ class CPDataSet(Dataset):
             data.feature_names = self.feature_names
         return data
     
-def data_splitter(graphsdir,test_size,save_path,hfivesdir):
-    dataset = CPDataSet(root = graphsdir, hfivesdir=hfivesdir)
+def data_splitter(graphsdir,test_size,save_path,hfivesdir, lepton_only):
+    dataset = CPDataSet(root = graphsdir, hfivesdir=hfivesdir,lepton_only=lepton_only)
 
     torch.manual_seed(12345)
     dataset = dataset.shuffle()
@@ -185,7 +216,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--hfivesdir',type=str,required=False, default = '../data/s2286706/new_Input_CP_Studies_llqq_LinearTerm_20th_October2025.h5')
     parser.add_argument('--graphdir',type=str,default="../graphdata/CP_Studies_llqq_graphs_20th_October_Linear", required = False)
-    parser.add_argument('--lepton_only',type = bool,default = True, required = False)
+    parser.add_argument('--lepton_only',type = bool,default = False, required = False)
     parser.add_argument('--test_size',type=float,required=False,default=0.25)
     parser.add_argument('--save_path',type=str,required=False, default = '../graphdata/dataset_dict.pt')
 
@@ -204,5 +235,6 @@ if __name__ == '__main__':
     data_splitter(graphsdir=args.graphdir,
                   test_size=args.test_size,
                   save_path=args.save_path,
-                  hfivesdir=args.hfivesdir)
+                  hfivesdir=args.hfivesdir,
+                  lepton_only=args.lepton_only)
     print('\nGraph data processing complete')
