@@ -38,7 +38,7 @@ def main(tensor_path, model_path, learning_rate, batch_size, num_epochs):
 
     model = DNN(input_size)
     criterion = nn.BCEWithLogitsLoss()
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-3)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     early_stopper = EarlyStopperAUC(patience = 5, min_delta = 1e-4)
 

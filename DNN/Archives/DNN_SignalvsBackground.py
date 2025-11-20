@@ -38,7 +38,7 @@ class DNN(nn.Module):
 
 def main():
     input_size = X_train_tensor.shape[1]
-    learning_rate = 0.00017
+    learning_rate = 0.0001
     batch_size = 128
     num_epochs = 20
 
@@ -48,7 +48,7 @@ def main():
     model = DNN(input_size)
     # criterion = nn.BCELoss()
     criterion = nn.BCEWithLogitsLoss()
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate,weight_decay=1e-3)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     train_dataset = TensorDataset(X_train_tensor, y_train_tensor.float())
     train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)

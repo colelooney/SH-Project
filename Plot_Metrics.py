@@ -46,7 +46,7 @@ def plot_confusion_matrix(npz_path, save_path):
 
     # Normalize to show percentages
     cm_norm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-    labels = ['Background (0)', 'Signal (1)']
+    labels = ['Destructive (0)', 'Constructive (1)']
 
     plt.figure(figsize=(6, 5))
     sns.heatmap(cm_norm, annot=True, fmt=".2f", cmap='Blues', cbar=False,
@@ -61,11 +61,11 @@ def plot_confusion_matrix(npz_path, save_path):
 def plot_histogram():
     # Create histogram
     #Hardcoded paths for now
-    # data_odd = np.load('results/odd_final_new.npz')
+    # data_odd = np.load('results/18_feature_odd_noweightdecay.npz')
     # discriminant_scores_odd = data_odd['discriminant_scores']
     # Lumi_weights_odd = data_odd['Lumi_weights']
 
-    data_even = np.load('results/optuna_33_feature.npz')
+    data_even = np.load('results/gnn_noweightdecay.npz')
     discriminant_scores = data_even['discriminant_scores']
     Lumi_weights = data_even['Lumi_weights']
 
@@ -77,19 +77,19 @@ def plot_histogram():
 
     plt.figure(figsize=(10,6))
     plt.hist(discriminant_scores, bins=75, weights=Lumi_weights/norm, alpha=0.5, color = 'blue', edgecolor  = 'black',histtype='step')
-    plt.title('Even DNN Discriminant Scores on Linear Interference Term DataSet Weighted by Lumi Weight')
+    plt.title('GNN Discriminant Scores on Linear Interference Term DataSet Weighted by Lumi Weight')
     plt.xlabel('Discriminant Score (p(+) - p(-))')
     plt.ylabel('Event Fraction')
     plt.xlim(-1,1)
     plt.grid(False)
-    plt.savefig('plots/DNN_Discriminant_vs_LumiWeight_final_linear_full_features.png')
+    plt.savefig('plots/GNN_Discriminant_Histogram_Final.png')
     # plt.show()
 
-    # quad_odd = np.load('results/quadratic_odd_final_new.npz')
+    # quad_odd = np.load('results/quad_odd_final_nwd.npz')
     # discriminant_scores_odd = quad_odd['discriminant_scores']
     # Lumi_weights_odd = quad_odd['Lumi_weights']
 
-    # quad_even = np.load('results/quadratic_even_final_new.npz')
+    # quad_even = np.load('results/quad_even_final_nwd.npz')
     # discriminant_scores_even = quad_even['discriminant_scores']
     # Lumi_weights_even = quad_even['Lumi_weights']
 
@@ -105,12 +105,12 @@ def plot_histogram():
     # plt.ylabel('Event Fraction')
     # plt.xlim(-1,1)
     # plt.grid(False)
-    # plt.savefig('plots/DNN_Discriminant_vs_LumiWeight_final_quadratic_unnorm.png')
+    # plt.savefig('plots/DNN_Discriminant_vs_LumiWeight_final_quadratic_noweightdecay.png')
 
 
 if __name__ == '__main__':
-    plot_roc('results/optuna_33_feature.npz', 'plots/DNN_ROC_Curve_final_even_full_features.png')
-    plot_confusion_matrix('results/optuna_33_feature.npz', 'plots/DNN_Confusion_Matrix_final_even_full_features.png')
-    # plot_roc('results/odd_final_new.npz', 'plots/DNN_ROC_Curve_final_odd_new.png') 
-    # plot_confusion_matrix('results/odd_final_new.npz', 'plots/DNN_Confusion_Matrix_final_odd_new.png') 
+    plot_roc('results/gnn_noweightdecay.npz', 'plots/GNN_ROC_Curve_final.png')
+    plot_confusion_matrix('results/gnn_noweightdecay.npz', 'plots/GNN_Confusion_matric_final.png')
+    # plot_roc('results/18_feature_odd_noweightdecay.npz', 'plots/DNN_ROC_Curve_final_odd_18_features_noweightdecay.png') 
+    # plot_confusion_matrix('results/18_feature_odd_noweightdecay.npz', 'plots/DNN_Confusion_Matrix_final_odd_18_features_noweightdecay.png') 
     plot_histogram()

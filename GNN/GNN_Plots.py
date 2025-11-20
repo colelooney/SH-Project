@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-data = np.load('../graphdata/gnn_res_test.npz')
+data = np.load('../results/gnn_noweightdecay.npz')
 discriminant_scores = data['discriminant_scores']
 Lumi_weights = data['lumi_weights']
 

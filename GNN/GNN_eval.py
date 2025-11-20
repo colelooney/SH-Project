@@ -18,7 +18,7 @@ from GNN import GCN
 import joblib
 import argparse
 from datetime import datetime
-from sklearn.metrics import accuracy_score,precision_score, recall_score, roc_auc_score
+from sklearn.metrics import accuracy_score,precision_score, recall_score, roc_auc_score, roc_curve, confusion_matrix
 from torch_geometric.data import DataLoader
 from GNN_preprocess import CPDataSet
 
@@ -72,6 +72,12 @@ def main(dict_path, model_path,batch_size,hidden_dim, save_path):
     recall = recall_score(all_labels, all_preds)
     auc = roc_auc_score(all_labels, all_probs)
 
+    fpr, tpr, thresholds = roc_curve(all_labels, all_probs)
+    cm = confusion_matrix(all_labels,all_preds)
+    roc_auc = roc_auc_score(all_labels,all_probs)
+
+
+
     print(f"Average Test Loss: {avg_test_loss:.4f}")
     print(f"Accuracy: {accuracy:.4f}")
     print(f"Precision: {precision:.4f}")
@@ -89,7 +95,12 @@ def main(dict_path, model_path,batch_size,hidden_dim, save_path):
         discriminant_scores = all_discriminents.numpy(),
         y_true = all_labels.numpy(),
         y_pred = all_preds.numpy(),
-        lumi_weights = all_lumi_weights.numpy()
+        Lumi_weights = all_lumi_weights.numpy(),
+        fpr = fpr,
+        tpr = tpr,
+        thresholds = thresholds,
+        confusion_matrix = cm,
+        roc_auc = roc_auc
     )
 
 if __name__ == '__main__':
