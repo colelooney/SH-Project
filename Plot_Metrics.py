@@ -7,6 +7,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.ticker import MaxNLocator
+import h5py
+import pandas as pd
 
 plt.rcParams.update({
     'font.size': 13,
@@ -107,10 +109,41 @@ def plot_histogram():
     # plt.grid(False)
     # plt.savefig('plots/DNN_Discriminant_vs_LumiWeight_final_quadratic_noweightdecay.png')
 
+def plot_feature_histograms():
+    with h5py.File('data/s2286706/new_Input_CP_Studies_llqq_LinearTerm_20th_October2025.h5') as f:
+        df = pd.DataFrame(f['LargeRJet']['1d'][:])
+
+    features_to_drop = ['EventNumber', 'FJ_flavour','Type','NegLep_Eta',
+                    'Lep_pT_balance','FJ_mass','FJ_E','FJ_phi','LeadingSubJet_Phi',
+                    'NegLep_E','PosLep_Eta','SubLeadingSubJet_pT','Vlep_E','Vlep_mass',
+                    'Vlep_phi','cosThetaStar','costheta1']
+    
+    df = df.drop(columns = features_to_drop) #get final testing dataset
+
+    df_constructive = df[df['Lumi_weight'] > 0]
+    df_destructive = df[df['Lumi_weight'] < 0]
+
+    df_constructive = df_constructive.drop(columns=['Lumi_weight'])
+    df_destructive = df_destructive.drop(columns=['Lumi_weight'])
+    df = df.drop(columns=['Lumi_weight'])
+    for feature in df.columns:
+        plt.figure(figsize=(10,6))
+        plt.hist(df_constructive[feature], bins=75, alpha=0.5, color = 'blue', edgecolor  = 'blue',histtype='step')
+        plt.hist(df_destructive[feature], bins=75, alpha=0.5, color = 'red', edgecolor  = 'red',histtype='step')
+        plt.title(f'Histogram of Feature: {feature}')
+        plt.legend(['Constructive Interference','Destructive Interference'])
+        plt.xlabel(f'{feature} Value')
+        plt.ylabel('Event Count')
+        plt.grid(False)
+        plt.savefig(f'plots/Feature_Histograms/{feature}_histogram.png')
+        plt.close()
+
+
 
 if __name__ == '__main__':
-    plot_roc('results/gnn_noweightdecay.npz', 'plots/GNN_ROC_Curve_final.png')
-    plot_confusion_matrix('results/gnn_noweightdecay.npz', 'plots/GNN_Confusion_matric_final.png')
-    # plot_roc('results/18_feature_odd_noweightdecay.npz', 'plots/DNN_ROC_Curve_final_odd_18_features_noweightdecay.png') 
-    # plot_confusion_matrix('results/18_feature_odd_noweightdecay.npz', 'plots/DNN_Confusion_Matrix_final_odd_18_features_noweightdecay.png') 
-    plot_histogram()
+    # plot_roc('results/gnn_noweightdecay.npz', 'plots/GNN_ROC_Curve_final.png')
+    # plot_confusion_matrix('results/gnn_noweightdecay.npz', 'plots/GNN_Confusion_matric_final.png')
+    # # plot_roc('results/18_feature_odd_noweightdecay.npz', 'plots/DNN_ROC_Curve_final_odd_18_features_noweightdecay.png') 
+    # # plot_confusion_matrix('results/18_feature_odd_noweightdecay.npz', 'plots/DNN_Confusion_Matrix_final_odd_18_features_noweightdecay.png') 
+    # plot_histogram()
+    plot_feature_histograms()
