@@ -113,12 +113,20 @@ def plot_feature_histograms():
     with h5py.File('data/s2286706/new_Input_CP_Studies_llqq_LinearTerm_20th_October2025.h5') as f:
         df = pd.DataFrame(f['LargeRJet']['1d'][:])
 
-    features_to_drop = ['EventNumber', 'FJ_flavour','Type','NegLep_Eta',
-                    'Lep_pT_balance','FJ_mass','FJ_E','FJ_phi','LeadingSubJet_Phi',
-                    'NegLep_E','PosLep_Eta','SubLeadingSubJet_pT','Vlep_E','Vlep_mass',
-                    'Vlep_phi','cosThetaStar','costheta1']
+    with h5py.File('data/s2286706/new_Input_CP_Studies_llqq_QuadraticTerm_20th_October2025.h5') as f:
+        df_quad = pd.DataFrame(f['LargeRJet']['1d'][:])
+
+    # features_to_drop = ['EventNumber', 'FJ_flavour','Type','NegLep_Eta',
+    #                 'Lep_pT_balance','FJ_mass','FJ_E','FJ_phi','LeadingSubJet_Phi',
+    #                 'NegLep_E','PosLep_Eta','SubLeadingSubJet_pT','Vlep_E','Vlep_mass',
+    #                 'Vlep_phi','cosThetaStar','costheta1']
     
+    features_to_include = ['Lumi_weight','LeadingSubJet_E', 'SubLeadingSubJet_E', 'PosLep_Phi', 'NegLep_Phi', 'LeadingSubJet_Eta', 'NegLep_pT', 'PosLep_E', 'SubLeadingSubJet_Eta', 'FJ_pT', 'LeadingSubJet_pT', 'costheta2', 'PosLep_pT', 'Vlep_pT', 'Phi', 'FJ_eta', 'Phi1', 'SubLeadingSubJet_Phi', 'Vlep_eta']
+    features_to_drop = [col for col in df.columns if col not in features_to_include]
     df = df.drop(columns = features_to_drop) #get final testing dataset
+    df_quad = df_quad.drop(columns=features_to_drop)
+
+    print(df.columns)
 
     df_constructive = df[df['Lumi_weight'] > 0]
     df_destructive = df[df['Lumi_weight'] < 0]
@@ -126,14 +134,16 @@ def plot_feature_histograms():
     df_constructive = df_constructive.drop(columns=['Lumi_weight'])
     df_destructive = df_destructive.drop(columns=['Lumi_weight'])
     df = df.drop(columns=['Lumi_weight'])
+    df_quad = df_quad.drop(columns=['Lumi_weight'])
     for feature in df.columns:
         plt.figure(figsize=(10,6))
-        plt.hist(df_constructive[feature], bins=75, alpha=0.5, color = 'blue', edgecolor  = 'blue',histtype='step')
-        plt.hist(df_destructive[feature], bins=75, alpha=0.5, color = 'red', edgecolor  = 'red',histtype='step')
+        plt.hist(df_constructive[feature], bins=75, alpha=0.5, color = 'blue', edgecolor  = 'blue',histtype='step',density = True)
+        plt.hist(df_destructive[feature], bins=75, alpha=0.5, color = 'red', edgecolor  = 'red',histtype='step',density = True)
+        plt.hist(df_quad[feature], bins=75, alpha=0.5, color = 'green', edgecolor  = 'green',histtype='step',density = True)
         plt.title(f'Histogram of Feature: {feature}')
-        plt.legend(['Constructive Interference','Destructive Interference'])
+        plt.legend(['Constructive Interference','Destructive Interference','Quadratic Term'])
         plt.xlabel(f'{feature} Value')
-        plt.ylabel('Event Count')
+        plt.ylabel('Event Fraction')
         plt.grid(False)
         plt.savefig(f'plots/Feature_Histograms/{feature}_histogram.png')
         plt.close()
