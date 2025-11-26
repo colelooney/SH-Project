@@ -4,7 +4,7 @@
 ---
 
 ## ✅ Project Overview
-This repository contains a machine learning project focused on the search for **Charge-Parity (CP) violation** in the semi-leptonic final state (ℓℓqq) of heavy boson decays using deep learning techniques. The primary goal is to train a **Deep Neural Network (DNN)** to distinguish between events with positive and negative effective luminosity weights, which serves as a powerful method for probing CP asymmetries.
+This repository contains a machine learning project focused on the search for **Charge-Parity (CP) violation** in the semi-leptonic final state (ℓℓqq) of diboson decays using deep learning techniques. The primary goal is to train a **Deep Neural Network (DNN)** to distinguish between events with positive and negative effective luminosity weights, which serves as a powerful method for probing CP asymmetries.
 
 The project handles the entire pipeline, from data preprocessing of large HDF5 datasets to model training, evaluation, and visualization of the results.
 
